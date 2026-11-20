@@ -1,0 +1,89 @@
+services:
+  db:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-sport}
+      POSTGRES_USER: ${POSTGRES_USER:-sport}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-sport} -d ${POSTGRES_DB:-sport}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - app-network
+
+  # Pulls everyone's Garmin Connect data into Postgres (hourly) and fetches weather.
+  sync:
+    build: ./sync
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      - POSTGRES_DB=${POSTGRES_DB:-sport}
+      - POSTGRES_USER=${POSTGRES_USER:-sport}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - CREDENTIALS_KEY=${CREDENTIALS_KEY}
+      - SYNC_BACKFILL_DAYS=${SYNC_BACKFILL_DAYS:-3650}
+      - SYNC_INTERVAL_SECONDS=${SYNC_INTERVAL_SECONDS:-3600}
+      # Polylines fetched per sync cycle — raise to 200 for faster catch-up.
+      - GPS_BATCH_SIZE=${GPS_BATCH_SIZE:-50}
+    volumes:
+      - ./db/init.sql:/app/init.sql:ro
+      # Garmin OAuth tokens, one folder per Quarc user id (see garmin-login.sh).
+      - ./garth_tokens:/root/.garth
+    networks:
+      - app-network
+
+  api:
+    build: ./api
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      - POSTGRES_DB=${POSTGRES_DB:-sport}
+      - POSTGRES_USER=${POSTGRES_USER:-sport}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - CREDENTIALS_KEY=${CREDENTIALS_KEY}
+      # Must match quarc-auth: this API verifies the login cookie it issues.
+      - JWT_SECRET=${JWT_SECRET}
+      # Must match quarc-auth's own SECURE_COOKIE. This API never issues the
+      # original login cookie (quarc-auth does), but it DOES re-issue a renewed
+      # one on a sliding session (see api/auth.py) — and a renewal with the wrong
+      # sameSite/secure would stop reaching the server from a cross-origin client
+      # (e.g. the Android app's WebView) that the original cookie reached fine.
+      - SECURE_COOKIE=${SECURE_COOKIE:-true}
+    volumes:
+      - ./db/init.sql:/app/init.sql:ro
+    networks:
+      - app-network
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "4007:443"
+    volumes:
+      - /var/lib/tailscale/certs:/etc/nginx/ssl:ro
+    depends_on:
+      - api
+    restart: unless-stopped
+    networks:
+      - app-network
+      # Lets nginx reach the quarc-auth container by name for /api/auth/*.
+      - quarcnet-shared
+
+networks:
+  app-network:
+    driver: bridge
+  quarcnet-shared:
+    external: true
+
+volumes:
+  postgres_data:

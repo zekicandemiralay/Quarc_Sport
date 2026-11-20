@@ -1,0 +1,452 @@
+{
+  "common": {
+    "back": "Back",
+    "saving": "Saving…",
+    "loading": "Loading…",
+    "cancel": "Cancel",
+    "save": "Save",
+    "delete": "Delete",
+    "edit": "Edit",
+    "close": "Close",
+    "retry": "Retry",
+    "none": "None"
+  },
+  "app": {
+    "dateLabel": "{{start}} → {{end}}  ({{count}} days)",
+    "loadFailed": "Failed to load data",
+    "connectGarmin": "Connect your Garmin account to start syncing your activities, sleep and health data.",
+    "connectGarminButton": "Connect Garmin"
+  },
+  "tabs": {
+    "Overview": "Overview",
+    "Health": "Health",
+    "Sleep": "Sleep",
+    "Activity": "Activity",
+    "Touring": "Touring"
+  },
+  "range": {
+    "7d": "7d",
+    "30d": "30d",
+    "90d": "90d",
+    "6m": "6m",
+    "1y": "1y",
+    "All": "All"
+  },
+  "auth": {
+    "signInToAccount": "Sign in with your Quarc account",
+    "username": "Username",
+    "password": "Password",
+    "login": "Sign in",
+    "signup": "Create account",
+    "needAccount": "No account yet? Create one",
+    "haveAccount": "Already have an account? Sign in",
+    "loginFailed": "Login failed",
+    "needsConnection": "Can't reach the server. Check your connection and try again."
+  },
+  "settings": {
+    "title": "Settings",
+    "account": "Account",
+    "signedInAs": "Signed in as",
+    "logout": "Sign out",
+    "accountHint": "Your Quarc account is shared with all Quarc apps. Change your password in Quarc Store or Quarc Music.",
+    "language": "Language",
+    "garmin": {
+      "title": "Garmin Connect",
+      "hint": "Stored encrypted. Cannot be retrieved after saving — only used by the sync service.",
+      "connected": "Connected — your data syncs every hour.",
+      "notConnected": "Not connected yet.",
+      "email": "Garmin Connect email",
+      "password": "Garmin Connect password",
+      "save": "Save Garmin login",
+      "saved": "Garmin login saved. Syncing starts within the hour.",
+      "saveFailed": "Could not save the Garmin login",
+      "remove": "Remove my Garmin login",
+      "removeConfirm": "Remove your Garmin login? Syncing stops; the data already synced stays.",
+      "mfaHint": "Two-factor Garmin account? After saving, ask the server admin to run garmin-login.sh for you once."
+    }
+  },
+  "updates": {
+    "title": "App updates",
+    "checking": "Checking for updates…",
+    "error": "Could not check for updates",
+    "installed": "Installed",
+    "latest": "Latest",
+    "upToDate": "You're up to date",
+    "updateAvailable": "An update is available",
+    "install": "Download and install",
+    "downloading": "Downloading…",
+    "viewRelease": "View release on GitHub",
+    "refresh": "Check again",
+    "noRelease": "No release has been published yet."
+  },
+  "charts": {
+    "activeTime": {
+      "title": "Active vs Sedentary Time",
+      "active": "Active (h)",
+      "sedentary": "Sedentary (h)"
+    },
+    "bodyBattery": {
+      "title": "Body Battery & Stress",
+      "high": "BB High",
+      "low": "BB Low",
+      "stress": "Stress"
+    },
+    "bodyBatteryDelta": {
+      "title": "Body Battery Recovery (High − Low)",
+      "hint": "How many points you recharged each day. Higher = better recovery. Overlaid with daily stress.",
+      "delta": "Recovery Δ",
+      "avg7": "7-day avg Δ",
+      "stress": "Stress"
+    },
+    "calories": {
+      "title": "Calories",
+      "active": "Active kcal",
+      "total": "Total kcal"
+    },
+    "floors": {
+      "title": "Floors Climbed",
+      "ascended": "Ascended",
+      "descended": "Descended"
+    },
+    "heartRate": {
+      "title": "Resting HR & SpO2",
+      "resting": "Resting HR",
+      "spo2": "SpO2 %"
+    },
+    "steps": {
+      "title": "Steps & Distance",
+      "goal": "goal",
+      "steps": "Steps",
+      "distance": "Distance (km)"
+    },
+    "sleep": {
+      "title": "Sleep Stages & Score",
+      "deep": "Deep (min)",
+      "rem": "REM (min)",
+      "light": "Light (min)",
+      "awake": "Awake (min)",
+      "score": "Score"
+    },
+    "hrRange": {
+      "title": "Daily Heart Rate Range",
+      "hint": "Shaded area = full daily range (min → max). Lines: resting HR (red), daily max 7-day avg (orange).",
+      "range": "Daily range",
+      "min": "Min HR",
+      "resting": "Resting HR",
+      "max": "Max HR",
+      "maxAvg7": "Max HR 7d avg"
+    },
+    "hrv": {
+      "title": "HRV (Heart Rate Variability)",
+      "empty": "No HRV data available. HRV is recorded during deep sleep — ensure your watch is worn while sleeping.",
+      "titleFull": "HRV — Last Night + 7-day Mean ± 1σ",
+      "hint": "Higher HRV = better recovery and readiness. Shaded band shows normal variation range.",
+      "band": "±1σ band",
+      "lastNight": "HRV last night",
+      "weekly": "Weekly avg",
+      "mean7": "7-day rolling avg"
+    },
+    "rollingHr": {
+      "title": "Resting HR — Rolling 7-day Mean ± 1σ",
+      "hint": "Shaded band = mean ± 1 standard deviation. Narrower band = more consistent HR.",
+      "band": "±1σ band",
+      "hr": "Resting HR",
+      "mean7": "7-day avg"
+    },
+    "sleepDebt": {
+      "title": "Sleep Duration & Cumulative Debt",
+      "hint": "Target: {{hours}}h/night. Cumulative debt = running total of minutes under target (rising = building debt).",
+      "target": "{{hours}}h target",
+      "sleep": "Sleep (h)",
+      "avg": "7-day avg",
+      "debt": "Cum. debt (min)"
+    },
+    "sleepResp": {
+      "title": "Sleep SpO2, Respiration & Score",
+      "spo2": "Sleep SpO2 %",
+      "score": "Sleep Score",
+      "resp": "Respiration bpm"
+    },
+    "sleepSchedule": {
+      "title": "Sleep Schedule Consistency",
+      "hint": "Filled area = sleep window each night (bedtime → wake). Consistent schedule = uniform band height and position.",
+      "bedtime": "Bedtime",
+      "wake": "Wake time"
+    },
+    "stepsRolling": {
+      "title": "Steps — Rolling 7-day Mean ± 1σ",
+      "hint": "Shaded band = ±1σ. Orange dashed line = long-term trend.",
+      "improving": "↑ improving",
+      "declining": "↓ declining",
+      "stable": "→ stable",
+      "goal": "goal",
+      "band": "±1σ band",
+      "steps": "Steps",
+      "mean7": "7-day avg",
+      "trend": "Trend"
+    },
+    "trainingLoad": {
+      "title": "Weekly Distance by Activity Type",
+      "cycling": "Cycling km",
+      "running": "Running km",
+      "walking": "Walking km",
+      "other": "Other km",
+      "count": "# Activities"
+    },
+    "pace": {
+      "title": "Running Pace Trend",
+      "hint": "Each dot = one run · line = 5-run rolling average · lower = faster",
+      "pace": "Pace",
+      "avg5": "5-run avg"
+    }
+  },
+  "activityTypes": {
+    "RUNNING": "Running",
+    "CYCLING": "Cycling",
+    "WALKING": "Walking",
+    "SWIMMING": "Swimming",
+    "STRENGTH": "Strength",
+    "STRENGTH_TRAINING": "Strength Training",
+    "TRAIL_RUNNING": "Trail Running",
+    "HIKING": "Hiking",
+    "OPEN_WATER_SWIMMING": "Open Water Swimming",
+    "LAP_SWIMMING": "Lap Swimming",
+    "MOUNTAIN_BIKING": "Mountain Biking",
+    "INDOOR_CYCLING": "Indoor Cycling",
+    "TREADMILL_RUNNING": "Treadmill Running",
+    "YOGA": "Yoga",
+    "OTHER": "Other"
+  },
+  "summary": {
+    "avgSteps": "Avg Steps",
+    "avg7": "7-day avg",
+    "restingHr": "Resting HR",
+    "bodyBattery": "Body Battery",
+    "lowHigh": "low–high range",
+    "stress": "Stress",
+    "sleepScore": "Sleep Score",
+    "sleepAvg": "{{hours}}h avg",
+    "spo2": "SpO2",
+    "bpm": "bpm"
+  },
+  "activities": {
+    "title": "Activities",
+    "empty": "No activities in this period.",
+    "date": "Date",
+    "type": "Type",
+    "name": "Name",
+    "duration": "Duration",
+    "distance": "Distance",
+    "paceSpeed": "Pace/Speed",
+    "avgHr": "Avg HR",
+    "cal": "Cal"
+  },
+  "heatmap": {
+    "title": "Activity Calendar",
+    "less": "Less",
+    "more": "More",
+    "tooltip": "{{date}}: {{min}} min"
+  },
+  "countries": {
+    "title": "Countries",
+    "summary": "{{count}} countries · {{km}} total · click a row to expand",
+    "summary_one": "{{count}} country · {{km}} total · click a row to expand",
+    "country": "Country",
+    "distance": "Distance",
+    "time": "Time",
+    "elevation": "Elevation",
+    "types": "Types",
+    "type": "Type",
+    "count": "Count",
+    "avgHr": "Avg HR",
+    "activities": "{{count}} activities",
+    "activities_one": "{{count}} activity",
+    "bpm": "{{hr}} bpm"
+  },
+  "pb": {
+    "col": {
+      "rank": "#",
+      "date": "Date",
+      "activity": "Activity",
+      "type": "Type",
+      "distance": "Distance",
+      "duration": "Duration",
+      "avgPace": "Avg Pace",
+      "avgSpeed": "Avg Speed",
+      "elevation": "Elevation",
+      "avgHr": "Avg HR",
+      "maxHr": "Max HR",
+      "calories": "Calories",
+      "aerobicTe": "Aerobic TE",
+      "cadence": "Cadence",
+      "steps": "Steps",
+      "activeTime": "Active Time",
+      "bodyBattery": "Body Battery",
+      "restingHr": "Resting HR",
+      "stress": "Stress"
+    },
+    "cards": {
+      "longestRun": "Longest run",
+      "fastestPace": "Fastest run pace",
+      "longestRide": "Longest ride",
+      "fastestRide": "Fastest ride avg",
+      "longestActivity": "Longest activity",
+      "mostElevation": "Most elevation",
+      "bestTe": "Best aerobic TE",
+      "maxHr": "Highest max HR",
+      "mostCalories": "Most calories",
+      "maxSteps": "Most steps in a day",
+      "maxDailyDist": "Most distance in a day",
+      "highBb": "Best body battery day",
+      "lowestRhr": "Lowest resting HR"
+    },
+    "modals": {
+      "longestRun": {
+        "title": "All Runs — by Distance",
+        "subtitle": "{{count}} runs sorted longest to shortest"
+      },
+      "fastestPace": {
+        "title": "All Runs — by Pace (fastest first)",
+        "subtitle": "Only runs longer than 2 km · lower pace = faster"
+      },
+      "longestRide": {
+        "title": "All Rides — by Distance",
+        "subtitle": "{{count}} cycling activities sorted longest to shortest"
+      },
+      "fastestRide": {
+        "title": "All Rides — by Avg Speed (fastest first)",
+        "subtitle": "{{count}} cycling activities"
+      },
+      "longestActivity": {
+        "title": "All Activities — by Duration",
+        "subtitle": "{{count}} activities sorted longest first"
+      },
+      "mostElevation": {
+        "title": "All Activities — by Elevation Gain",
+        "subtitle": "{{count}} activities with elevation data"
+      },
+      "bestTe": {
+        "title": "All Activities — by Aerobic Training Effect",
+        "subtitle": "Higher = more aerobic stress. Max is 5.0"
+      },
+      "maxHr": {
+        "title": "All Activities — by Max Heart Rate",
+        "subtitle": "{{count}} activities with HR data"
+      },
+      "mostCalories": {
+        "title": "All Activities — by Calories Burned",
+        "subtitle": "{{count}} activities with calorie data"
+      },
+      "maxSteps": {
+        "title": "All Days — by Step Count",
+        "subtitle": "{{count}} days with step data · top 200 shown"
+      },
+      "maxDailyDist": {
+        "title": "All Days — by Total Distance",
+        "subtitle": "{{count}} days with distance data · top 200 shown"
+      },
+      "highBb": {
+        "title": "All Days — by Peak Body Battery",
+        "subtitle": "{{count}} days · higher = more recovered"
+      },
+      "lowestRhr": {
+        "title": "All Days — by Resting Heart Rate (lowest first)",
+        "subtitle": "Lower = more recovered / better fitness"
+      }
+    },
+    "title": "Personal Bests",
+    "clickCard": "click any card to see full list",
+    "footer": "{{count}} entries · click outside to close",
+    "footerMap": "{{count}} entries · click a row to highlight on map · click outside to close"
+  },
+  "map": {
+    "title": "Activity Map",
+    "count": "{{count}} activities",
+    "count_one": "{{count}} activity",
+    "coloredBySpeed": "paths colored by speed",
+    "clickToDeselect": "click map to deselect",
+    "allTypes": "All types",
+    "from": "From",
+    "to": "To",
+    "show": "Show",
+    "reset": "Reset",
+    "noGps": "No GPS data for this period — sync populates this automatically for outdoor activities",
+    "start": "start",
+    "end": "end",
+    "slow": "slow",
+    "fast": "fast",
+    "weatherLayers": "Weather layers",
+    "era5": "ERA5 grid",
+    "era5None": "ERA5 (no data)",
+    "temp": "Temp",
+    "rain": "Rain",
+    "wind": "Wind",
+    "hour": "Hour",
+    "radar": "Radar ({{count}} frames)",
+    "radarNone": "Radar (not available)",
+    "popup": {
+      "distance": "Distance",
+      "duration": "Duration",
+      "pace": "Pace",
+      "speed": "Speed",
+      "avgHr": "Avg HR",
+      "elevation": "Elevation",
+      "calories": "Calories"
+    }
+  },
+  "touring": {
+    "elevationPopup": "+{{m}} m elevation",
+    "legendTemp": "— temp",
+    "legendWind": "- - wind (km/h)",
+    "legendPrecip": "▌ precip",
+    "legendWindow": "shaded = activity window",
+    "noWeather": "No weather data",
+    "humidity": "{{value}}% RH",
+    "totalDistance": "Total distance",
+    "elevationGain": "Elevation gain",
+    "movingTime": "Moving time",
+    "activeDays": "Active days",
+    "borderCrossing": "Border crossing",
+    "sleepStop": "Sleep stop",
+    "yourPosition": "Your position",
+    "sleepPopup": "Sleep {{date}}",
+    "sleepScore": " · score {{score}}",
+    "layerRoute": "🎨 Route",
+    "layerTemp": "🌡 Temp",
+    "layerWind": "💨 Wind",
+    "themeDark": "🌑 Dark",
+    "themeTerrain": "🗺 Terrain",
+    "weatherByDay": "Weather by Day",
+    "weatherHint": "Weather is fetched automatically each sync cycle. Click any card to see the hourly chart.",
+    "countries": "Countries",
+    "loadFailed": "Failed to load activities: {{error}}",
+    "noGpsActivities": "No activities with GPS routes in this period",
+    "tourNotFound": "Tour not found",
+    "tourName": "Tour name",
+    "tourDescription": "Description (optional)",
+    "tourSummary": "{{dates}} · {{count}} activities",
+    "rename": "Rename",
+    "deleteQuestion": "Delete?",
+    "yes": "Yes",
+    "no": "No",
+    "activities": "Activities",
+    "noActivitiesInTour": "No activities in this tour",
+    "newTour": "New Tour",
+    "tourNameLabel": "Tour name *",
+    "tourNamePlaceholder": "e.g. Munich → Vienna 2025",
+    "notesPlaceholder": "Notes about the tour…",
+    "selectActivities": "Select Activities",
+    "selectedCount": "{{start}} – {{end}} · {{selected}} of {{total}} selected",
+    "selectAll": "Select all",
+    "deselectAll": "Deselect all",
+    "noActivitiesPeriod": "No activities in this period",
+    "creating": "Creating…",
+    "createTour": "Create Tour ({{count}} activities)",
+    "savedTours": "Saved Tours",
+    "browseRange": "Browse current range →",
+    "noTours": "No saved tours yet",
+    "noToursHint": "Pick a date range, click New Tour, and select your activities",
+    "actsShort": "{{count}} acts",
+    "browse": "Browse: {{start}} – {{end}}"
+  }
+}

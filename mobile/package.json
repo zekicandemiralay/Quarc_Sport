@@ -1,0 +1,19 @@
+{
+  "name": "quarc-sport-android",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "build": "npx cap sync android",
+    "open": "npx cap open android",
+    "icons": "npx capacitor-assets generate --android --iconBackgroundColor \"#ffffff\" --iconBackgroundColorDark \"#ffffff\" --splashBackgroundColor \"#121212\" --splashBackgroundColorDark \"#111111\" && node scripts/launcher-icons.cjs"
+  },
+  "dependencies": {
+    "@capacitor/android": "^6.0.0",
+    "@capacitor/app": "^6.0.0",
+    "@capacitor/core": "^6.0.0"
+  },
+  "devDependencies": {
+    "@capacitor/assets": "^3.0.5",
+    "@capacitor/cli": "^6.0.0"
+  }
+}

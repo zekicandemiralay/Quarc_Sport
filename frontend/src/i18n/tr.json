@@ -1,0 +1,452 @@
+{
+  "common": {
+    "back": "Geri",
+    "saving": "Kaydediliyor…",
+    "loading": "Yükleniyor…",
+    "cancel": "İptal",
+    "save": "Kaydet",
+    "delete": "Sil",
+    "edit": "Düzenle",
+    "close": "Kapat",
+    "retry": "Tekrar dene",
+    "none": "Yok"
+  },
+  "app": {
+    "dateLabel": "{{start}} → {{end}}  ({{count}} gün)",
+    "loadFailed": "Veriler yüklenemedi",
+    "connectGarmin": "Aktivitelerini, uykunu ve sağlık verilerini senkronlamak için Garmin hesabını bağla.",
+    "connectGarminButton": "Garmin'i bağla"
+  },
+  "tabs": {
+    "Overview": "Genel Bakış",
+    "Health": "Sağlık",
+    "Sleep": "Uyku",
+    "Activity": "Aktivite",
+    "Touring": "Tur"
+  },
+  "range": {
+    "7d": "7g",
+    "30d": "30g",
+    "90d": "90g",
+    "6m": "6a",
+    "1y": "1y",
+    "All": "Tümü"
+  },
+  "auth": {
+    "signInToAccount": "Quarc hesabınla giriş yap",
+    "username": "Kullanıcı adı",
+    "password": "Şifre",
+    "login": "Giriş yap",
+    "signup": "Hesap oluştur",
+    "needAccount": "Hesabın yok mu? Oluştur",
+    "haveAccount": "Zaten hesabın var mı? Giriş yap",
+    "loginFailed": "Giriş başarısız",
+    "needsConnection": "Sunucuya ulaşılamıyor. Bağlantını kontrol edip tekrar dene."
+  },
+  "settings": {
+    "title": "Ayarlar",
+    "account": "Hesap",
+    "signedInAs": "Giriş yapılan hesap",
+    "logout": "Çıkış yap",
+    "accountHint": "Quarc hesabın tüm Quarc uygulamalarında ortaktır. Şifreni Quarc Store veya Quarc Music'ten değiştirebilirsin.",
+    "language": "Dil",
+    "garmin": {
+      "title": "Garmin Connect",
+      "hint": "Şifrelenmiş olarak saklanır. Kaydedildikten sonra geri okunamaz — yalnızca senkronizasyon servisi kullanır.",
+      "connected": "Bağlı — verilerin her saat senkronlanır.",
+      "notConnected": "Henüz bağlı değil.",
+      "email": "Garmin Connect e-postası",
+      "password": "Garmin Connect şifresi",
+      "save": "Garmin girişini kaydet",
+      "saved": "Garmin girişi kaydedildi. Senkronizasyon bir saat içinde başlar.",
+      "saveFailed": "Garmin girişi kaydedilemedi",
+      "remove": "Garmin girişimi kaldır",
+      "removeConfirm": "Garmin girişin kaldırılsın mı? Senkronizasyon durur; zaten senkronlanan veriler kalır.",
+      "mfaHint": "Garmin hesabında iki adımlı doğrulama mı var? Kaydettikten sonra sunucu yöneticisinden senin için bir kez garmin-login.sh çalıştırmasını iste."
+    }
+  },
+  "updates": {
+    "title": "Uygulama güncellemeleri",
+    "checking": "Güncellemeler kontrol ediliyor…",
+    "error": "Güncellemeler kontrol edilemedi",
+    "installed": "Yüklü",
+    "latest": "En son",
+    "upToDate": "Güncelsin",
+    "updateAvailable": "Bir güncelleme var",
+    "install": "İndir ve yükle",
+    "downloading": "İndiriliyor…",
+    "viewRelease": "Sürümü GitHub'da gör",
+    "refresh": "Tekrar kontrol et",
+    "noRelease": "Henüz yayınlanmış bir sürüm yok."
+  },
+  "charts": {
+    "activeTime": {
+      "title": "Aktif ve Hareketsiz Süre",
+      "active": "Aktif (sa)",
+      "sedentary": "Hareketsiz (sa)"
+    },
+    "bodyBattery": {
+      "title": "Vücut Pili ve Stres",
+      "high": "VP Yüksek",
+      "low": "VP Düşük",
+      "stress": "Stres"
+    },
+    "bodyBatteryDelta": {
+      "title": "Vücut Pili Toparlanma (Yüksek − Düşük)",
+      "hint": "Her gün kaç puan şarj olduğun. Yüksek = daha iyi toparlanma. Günlük stresle birlikte gösterilir.",
+      "delta": "Toparlanma Δ",
+      "avg7": "7 günlük ort. Δ",
+      "stress": "Stres"
+    },
+    "calories": {
+      "title": "Kalori",
+      "active": "Aktif kcal",
+      "total": "Toplam kcal"
+    },
+    "floors": {
+      "title": "Çıkılan Kat",
+      "ascended": "Çıkılan",
+      "descended": "İnilen"
+    },
+    "heartRate": {
+      "title": "Dinlenme Nabzı ve SpO2",
+      "resting": "Dinlenme Nabzı",
+      "spo2": "SpO2 %"
+    },
+    "steps": {
+      "title": "Adım ve Mesafe",
+      "goal": "hedef",
+      "steps": "Adım",
+      "distance": "Mesafe (km)"
+    },
+    "sleep": {
+      "title": "Uyku Evreleri ve Skor",
+      "deep": "Derin (dk)",
+      "rem": "REM (dk)",
+      "light": "Hafif (dk)",
+      "awake": "Uyanık (dk)",
+      "score": "Skor"
+    },
+    "hrRange": {
+      "title": "Günlük Nabız Aralığı",
+      "hint": "Gölgeli alan = günlük tüm aralık (min → maks). Çizgiler: dinlenme nabzı (kırmızı), günlük maks. 7 günlük ort. (turuncu).",
+      "range": "Günlük aralık",
+      "min": "Min Nabız",
+      "resting": "Dinlenme Nabzı",
+      "max": "Maks Nabız",
+      "maxAvg7": "Maks Nabız 7g ort."
+    },
+    "hrv": {
+      "title": "HRV (Kalp Atış Hızı Değişkenliği)",
+      "empty": "HRV verisi yok. HRV derin uykuda ölçülür — uyurken saatini taktığından emin ol.",
+      "titleFull": "HRV — Dün Gece + 7 Günlük Ortalama ± 1σ",
+      "hint": "Yüksek HRV = daha iyi toparlanma ve hazırlık. Gölgeli bant normal değişim aralığını gösterir.",
+      "band": "±1σ bandı",
+      "lastNight": "HRV dün gece",
+      "weekly": "Haftalık ort.",
+      "mean7": "7 günlük hareketli ort."
+    },
+    "rollingHr": {
+      "title": "Dinlenme Nabzı — 7 Günlük Hareketli Ort. ± 1σ",
+      "hint": "Gölgeli bant = ortalama ± 1 standart sapma. Dar bant = daha tutarlı nabız.",
+      "band": "±1σ bandı",
+      "hr": "Dinlenme Nabzı",
+      "mean7": "7 günlük ort."
+    },
+    "sleepDebt": {
+      "title": "Uyku Süresi ve Birikmiş Uyku Borcu",
+      "hint": "Hedef: gecede {{hours}}sa. Birikmiş borç = hedefin altında kalan dakikaların toplamı (artıyorsa borç birikiyor).",
+      "target": "{{hours}}sa hedef",
+      "sleep": "Uyku (sa)",
+      "avg": "7 günlük ort.",
+      "debt": "Birikmiş borç (dk)"
+    },
+    "sleepResp": {
+      "title": "Uyku SpO2, Solunum ve Skor",
+      "spo2": "Uyku SpO2 %",
+      "score": "Uyku Skoru",
+      "resp": "Solunum /dk"
+    },
+    "sleepSchedule": {
+      "title": "Uyku Düzeni Tutarlılığı",
+      "hint": "Dolu alan = her gecenin uyku aralığı (yatış → uyanış). Düzenli uyku = eşit yükseklik ve konumda bant.",
+      "bedtime": "Yatış",
+      "wake": "Uyanış"
+    },
+    "stepsRolling": {
+      "title": "Adım — 7 Günlük Hareketli Ort. ± 1σ",
+      "hint": "Gölgeli bant = ±1σ. Turuncu kesikli çizgi = uzun vadeli eğilim.",
+      "improving": "↑ yükseliyor",
+      "declining": "↓ düşüyor",
+      "stable": "→ sabit",
+      "goal": "hedef",
+      "band": "±1σ bandı",
+      "steps": "Adım",
+      "mean7": "7 günlük ort.",
+      "trend": "Eğilim"
+    },
+    "trainingLoad": {
+      "title": "Aktivite Türüne Göre Haftalık Mesafe",
+      "cycling": "Bisiklet km",
+      "running": "Koşu km",
+      "walking": "Yürüyüş km",
+      "other": "Diğer km",
+      "count": "# Aktivite"
+    },
+    "pace": {
+      "title": "Koşu Tempo Eğilimi",
+      "hint": "Her nokta = bir koşu · çizgi = 5 koşuluk hareketli ortalama · düşük = daha hızlı",
+      "pace": "Tempo",
+      "avg5": "5 koşu ort."
+    }
+  },
+  "activityTypes": {
+    "RUNNING": "Koşu",
+    "CYCLING": "Bisiklet",
+    "WALKING": "Yürüyüş",
+    "SWIMMING": "Yüzme",
+    "STRENGTH": "Güç",
+    "STRENGTH_TRAINING": "Güç Antrenmanı",
+    "TRAIL_RUNNING": "Patika Koşusu",
+    "HIKING": "Doğa Yürüyüşü",
+    "OPEN_WATER_SWIMMING": "Açık Su Yüzme",
+    "LAP_SWIMMING": "Havuz Yüzme",
+    "MOUNTAIN_BIKING": "Dağ Bisikleti",
+    "INDOOR_CYCLING": "Salon Bisikleti",
+    "TREADMILL_RUNNING": "Koşu Bandı",
+    "YOGA": "Yoga",
+    "OTHER": "Diğer"
+  },
+  "summary": {
+    "avgSteps": "Ort. Adım",
+    "avg7": "7 günlük ort.",
+    "restingHr": "Dinlenme Nabzı",
+    "bodyBattery": "Vücut Pili",
+    "lowHigh": "düşük–yüksek aralık",
+    "stress": "Stres",
+    "sleepScore": "Uyku Skoru",
+    "sleepAvg": "ort. {{hours}}sa",
+    "spo2": "SpO2",
+    "bpm": "atım/dk"
+  },
+  "activities": {
+    "title": "Aktiviteler",
+    "empty": "Bu dönemde aktivite yok.",
+    "date": "Tarih",
+    "type": "Tür",
+    "name": "Ad",
+    "duration": "Süre",
+    "distance": "Mesafe",
+    "paceSpeed": "Tempo/Hız",
+    "avgHr": "Ort. Nabız",
+    "cal": "Kal"
+  },
+  "heatmap": {
+    "title": "Aktivite Takvimi",
+    "less": "Az",
+    "more": "Çok",
+    "tooltip": "{{date}}: {{min}} dk"
+  },
+  "countries": {
+    "title": "Ülkeler",
+    "summary": "{{count}} ülke · toplam {{km}} · genişletmek için satıra tıkla",
+    "summary_one": "{{count}} ülke · toplam {{km}} · genişletmek için satıra tıkla",
+    "country": "Ülke",
+    "distance": "Mesafe",
+    "time": "Süre",
+    "elevation": "Yükseklik",
+    "types": "Türler",
+    "type": "Tür",
+    "count": "Adet",
+    "avgHr": "Ort. Nabız",
+    "activities": "{{count}} aktivite",
+    "activities_one": "{{count}} aktivite",
+    "bpm": "{{hr}} atım/dk"
+  },
+  "pb": {
+    "col": {
+      "rank": "#",
+      "date": "Tarih",
+      "activity": "Aktivite",
+      "type": "Tür",
+      "distance": "Mesafe",
+      "duration": "Süre",
+      "avgPace": "Ort. Tempo",
+      "avgSpeed": "Ort. Hız",
+      "elevation": "Yükseklik",
+      "avgHr": "Ort. Nabız",
+      "maxHr": "Maks. Nabız",
+      "calories": "Kalori",
+      "aerobicTe": "Aerobik TE",
+      "cadence": "Kadans",
+      "steps": "Adım",
+      "activeTime": "Aktif Süre",
+      "bodyBattery": "Vücut Pili",
+      "restingHr": "Dinlenme Nabzı",
+      "stress": "Stres"
+    },
+    "cards": {
+      "longestRun": "En uzun koşu",
+      "fastestPace": "En hızlı koşu temposu",
+      "longestRide": "En uzun bisiklet sürüşü",
+      "fastestRide": "En hızlı sürüş ort.",
+      "longestActivity": "En uzun aktivite",
+      "mostElevation": "En fazla tırmanış",
+      "bestTe": "En iyi aerobik TE",
+      "maxHr": "En yüksek maks. nabız",
+      "mostCalories": "En fazla kalori",
+      "maxSteps": "Günlük en çok adım",
+      "maxDailyDist": "Günlük en uzun mesafe",
+      "highBb": "En iyi vücut pili günü",
+      "lowestRhr": "En düşük dinlenme nabzı"
+    },
+    "modals": {
+      "longestRun": {
+        "title": "Tüm Koşular — Mesafeye Göre",
+        "subtitle": "{{count}} koşu, uzundan kısaya sıralı"
+      },
+      "fastestPace": {
+        "title": "Tüm Koşular — Tempoya Göre (en hızlı önce)",
+        "subtitle": "Yalnızca 2 km'den uzun koşular · düşük tempo = daha hızlı"
+      },
+      "longestRide": {
+        "title": "Tüm Sürüşler — Mesafeye Göre",
+        "subtitle": "{{count}} bisiklet aktivitesi, uzundan kısaya sıralı"
+      },
+      "fastestRide": {
+        "title": "Tüm Sürüşler — Ort. Hıza Göre (en hızlı önce)",
+        "subtitle": "{{count}} bisiklet aktivitesi"
+      },
+      "longestActivity": {
+        "title": "Tüm Aktiviteler — Süreye Göre",
+        "subtitle": "{{count}} aktivite, en uzun önce"
+      },
+      "mostElevation": {
+        "title": "Tüm Aktiviteler — Yükseliş Kazanımına Göre",
+        "subtitle": "Yükseklik verisi olan {{count}} aktivite"
+      },
+      "bestTe": {
+        "title": "Tüm Aktiviteler — Aerobik Antrenman Etkisine Göre",
+        "subtitle": "Yüksek = daha fazla aerobik yük. Üst sınır 5,0"
+      },
+      "maxHr": {
+        "title": "Tüm Aktiviteler — Maks. Nabza Göre",
+        "subtitle": "Nabız verisi olan {{count}} aktivite"
+      },
+      "mostCalories": {
+        "title": "Tüm Aktiviteler — Yakılan Kaloriye Göre",
+        "subtitle": "Kalori verisi olan {{count}} aktivite"
+      },
+      "maxSteps": {
+        "title": "Tüm Günler — Adım Sayısına Göre",
+        "subtitle": "Adım verisi olan {{count}} gün · ilk 200 gösteriliyor"
+      },
+      "maxDailyDist": {
+        "title": "Tüm Günler — Toplam Mesafeye Göre",
+        "subtitle": "Mesafe verisi olan {{count}} gün · ilk 200 gösteriliyor"
+      },
+      "highBb": {
+        "title": "Tüm Günler — En Yüksek Vücut Piline Göre",
+        "subtitle": "{{count}} gün · yüksek = daha dinlenmiş"
+      },
+      "lowestRhr": {
+        "title": "Tüm Günler — Dinlenme Nabzına Göre (en düşük önce)",
+        "subtitle": "Düşük = daha dinlenmiş / daha iyi kondisyon"
+      }
+    },
+    "title": "Kişisel Rekorlar",
+    "clickCard": "tam listeyi görmek için bir karta tıkla",
+    "footer": "{{count}} kayıt · kapatmak için dışarı tıkla",
+    "footerMap": "{{count}} kayıt · haritada vurgulamak için satıra tıkla · kapatmak için dışarı tıkla"
+  },
+  "map": {
+    "title": "Aktivite Haritası",
+    "count": "{{count}} aktivite",
+    "count_one": "{{count}} aktivite",
+    "coloredBySpeed": "rotalar hıza göre renkli",
+    "clickToDeselect": "seçimi kaldırmak için haritaya tıkla",
+    "allTypes": "Tüm türler",
+    "from": "Başlangıç",
+    "to": "Bitiş",
+    "show": "Göster",
+    "reset": "Sıfırla",
+    "noGps": "Bu dönem için GPS verisi yok — senkronizasyon açık hava aktiviteleri için bunu otomatik doldurur",
+    "start": "başlangıç",
+    "end": "bitiş",
+    "slow": "yavaş",
+    "fast": "hızlı",
+    "weatherLayers": "Hava durumu katmanları",
+    "era5": "ERA5 ızgarası",
+    "era5None": "ERA5 (veri yok)",
+    "temp": "Sıcaklık",
+    "rain": "Yağmur",
+    "wind": "Rüzgar",
+    "hour": "Saat",
+    "radar": "Radar ({{count}} kare)",
+    "radarNone": "Radar (mevcut değil)",
+    "popup": {
+      "distance": "Mesafe",
+      "duration": "Süre",
+      "pace": "Tempo",
+      "speed": "Hız",
+      "avgHr": "Ort. Nabız",
+      "elevation": "Yükseklik",
+      "calories": "Kalori"
+    }
+  },
+  "touring": {
+    "elevationPopup": "+{{m}} m tırmanış",
+    "legendTemp": "— sıcaklık",
+    "legendWind": "- - rüzgar (km/sa)",
+    "legendPrecip": "▌ yağış",
+    "legendWindow": "gölge = aktivite aralığı",
+    "noWeather": "Hava durumu verisi yok",
+    "humidity": "%{{value}} nem",
+    "totalDistance": "Toplam mesafe",
+    "elevationGain": "Yükseliş kazanımı",
+    "movingTime": "Hareket süresi",
+    "activeDays": "Aktif günler",
+    "borderCrossing": "Sınır geçişi",
+    "sleepStop": "Uyku durağı",
+    "yourPosition": "Konumun",
+    "sleepPopup": "Uyku {{date}}",
+    "sleepScore": " · skor {{score}}",
+    "layerRoute": "🎨 Rota",
+    "layerTemp": "🌡 Sıcaklık",
+    "layerWind": "💨 Rüzgar",
+    "themeDark": "🌑 Koyu",
+    "themeTerrain": "🗺 Arazi",
+    "weatherByDay": "Günlük Hava Durumu",
+    "weatherHint": "Hava durumu her senkronizasyonda otomatik alınır. Saatlik grafiği görmek için bir karta tıkla.",
+    "countries": "Ülkeler",
+    "loadFailed": "Aktiviteler yüklenemedi: {{error}}",
+    "noGpsActivities": "Bu dönemde GPS rotalı aktivite yok",
+    "tourNotFound": "Tur bulunamadı",
+    "tourName": "Tur adı",
+    "tourDescription": "Açıklama (isteğe bağlı)",
+    "tourSummary": "{{dates}} · {{count}} aktivite",
+    "rename": "Yeniden adlandır",
+    "deleteQuestion": "Silinsin mi?",
+    "yes": "Evet",
+    "no": "Hayır",
+    "activities": "Aktiviteler",
+    "noActivitiesInTour": "Bu turda aktivite yok",
+    "newTour": "Yeni Tur",
+    "tourNameLabel": "Tur adı *",
+    "tourNamePlaceholder": "örn. Münih → Viyana 2025",
+    "notesPlaceholder": "Tur hakkında notlar…",
+    "selectActivities": "Aktiviteleri Seç",
+    "selectedCount": "{{start}} – {{end}} · {{total}} aktiviteden {{selected}} tanesi seçili",
+    "selectAll": "Tümünü seç",
+    "deselectAll": "Seçimi kaldır",
+    "noActivitiesPeriod": "Bu dönemde aktivite yok",
+    "creating": "Oluşturuluyor…",
+    "createTour": "Turu Oluştur ({{count}} aktivite)",
+    "savedTours": "Kayıtlı Turlar",
+    "browseRange": "Seçili aralığa göz at →",
+    "noTours": "Henüz kayıtlı tur yok",
+    "noToursHint": "Bir tarih aralığı seç, Yeni Tur'a tıkla ve aktivitelerini seç",
+    "actsShort": "{{count}} akt.",
+    "browse": "Göz at: {{start}} – {{end}}"
+  }
+}

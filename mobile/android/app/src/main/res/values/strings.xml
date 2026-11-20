@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Quarc Sport</string>
+    <string name="title_activity_main">Quarc Sport</string>
+    <string name="package_name">com.quarc.sport</string>
+    <string name="custom_url_scheme">com.quarc.sport</string>
+</resources>

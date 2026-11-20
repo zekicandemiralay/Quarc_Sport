@@ -1,0 +1,9 @@
+{
+  "appId": "com.quarc.sport",
+  "appName": "Quarc Sport",
+  "webDir": "www",
+  "android": {
+    "allowMixedContent": false,
+    "backgroundColor": "#121212"
+  }
+}
