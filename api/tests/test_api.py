@@ -61,7 +61,7 @@ def test_bearer_header_is_not_a_login(client):
 def test_me_creates_the_user_row(alice):
     r = alice.get("/api/me")
     assert r.status_code == 200
-    assert r.json() == {"id": ALICE, "username": "alice", "has_garmin": False}
+    assert r.json() == {"id": ALICE, "username": "alice", "has_garmin": False, "garmin_status": None}
     with db.cursor() as cur:
         cur.execute("SELECT username FROM users WHERE id = %s", (ALICE,))
         assert cur.fetchone()["username"] == "alice"

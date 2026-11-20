@@ -50,16 +50,22 @@ Open `https://quarcnet0.tail84500c.ts.net:4007` (Music 4000, Notes 4001, Weather
 Calendar 4005, Store 4006, **Sport 4007**) and sign in with your Quarc account.
 
 ### Connecting Garmin
-Each person opens **Settings → Garmin Connect** and saves their Garmin email and password. They are stored encrypted,
-can't be read back (not even by the admin), and are used only by the sync service. It then backfills up to 10 years of
-history and syncs again every hour. Until a person has done this their dashboard is empty and says so.
+Everyone does this themselves, no server access needed: **Settings → Garmin Connect**, enter the Garmin email and
+password, **Connect Garmin**.
 
-**Two-factor Garmin accounts:** the sync can't type an MFA code by itself. After the person has saved their login in
-Settings, run once on the server:
-```bash
-bash garmin-login.sh <their Quarc username>
-```
-It asks for the code Garmin sends and keeps Garmin's tokens in `garth_tokens/`, so syncing carries on without asking again.
+- The login is checked with Garmin right away: a wrong email or password (or an account that doesn't exist) is said so on
+  the spot and nothing is saved. Repeated tries are limited, to spare the Garmin account a lockout.
+- **Two-factor accounts:** Garmin sends its code (email or phone) and the app shows a box to type it in.
+- Garmin's sign-in tokens are kept in `garth_tokens/` (shared by `api` and `sync`), so syncing never needs a code again.
+  If Garmin ever asks for a new one, or stops accepting a changed password, the app shows it (Settings and a strip on the
+  dashboard) and the person fixes it there: **Send me a new code** / re-enter the login.
+- The import starts within seconds: **the latest month first** (the dashboard fills in by itself), then older history
+  newest-first, back up to `SYNC_BACKFILL_DAYS` (10 years), with progress shown in the app. After that it syncs every hour,
+  and **Sync now** asks for one right away.
+- Credentials are stored encrypted and never returned by the API (Settings only shows a masked email).
+
+`bash garmin-login.sh <Quarc username>` still exists as an admin fallback (a terminal sign-in with the code), but isn't
+needed normally.
 
 ### Moving from the old Quarc Garmin app
 On the old server run `bash backup.sh` in `Quarc_Garmin`, copy the backup folder here, then:

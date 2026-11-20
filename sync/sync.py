@@ -16,7 +16,7 @@ from pathlib import Path
 
 from cryptography.fernet import Fernet
 from dotenv import load_dotenv
-from garminconnect import Garmin
+from garminconnect import Garmin, GarminConnectAuthenticationError, GarminConnectTooManyRequestsError
 
 import db
 import weather as wx
@@ -71,46 +71,75 @@ def get_token_dir(user_id: str) -> str:
     return str(path)
 
 
-def login_user(user_id: str, email: str, password: str) -> Garmin | None:
-    token_dir = get_token_dir(user_id)
-    garmin = Garmin(email=email, password=password)
+def _execute(sql: str, params: tuple = ()) -> None:
+    conn = db.get_conn()
     try:
-        garmin.login(tokenstore=token_dir)
-        log.info(f"User {user_id}: Garmin session ready")
-        return garmin
-    except Exception as e:
-        hint = ""
-        if "MFA" in str(e):
-            hint = "  (two-factor account: run  bash garmin-login.sh <Quarc username>  once)"
-        log.warning(f"User {user_id}: Garmin login failed — {e}{hint}")
-        return None
-
-
-def get_users_with_credentials() -> list[dict]:
-    """Return all users that have encrypted Garmin credentials stored."""
-    try:
-        conn = db.get_conn()
         with conn.cursor() as cur:
-            cur.execute(
-                "SELECT id, garmin_email_enc, garmin_pass_enc FROM users "
-                "WHERE garmin_email_enc IS NOT NULL AND garmin_pass_enc IS NOT NULL"
-            )
-            rows = cur.fetchall()
+            cur.execute(sql, params)
+        conn.commit()
+    finally:
         conn.close()
-        result = []
-        for row in rows:
-            try:
-                result.append({
-                    "id":       row[0],
-                    "email":    decrypt_credential(row[1]),
-                    "password": decrypt_credential(row[2]),
-                })
-            except Exception as e:
-                log.warning(f"Failed to decrypt credentials for user {row[0]}: {e}")
-        return result
+
+
+def set_status(user_id: str, status: str, error: str | None = None, retry_minutes: int | None = None) -> None:
+    """Record how the Garmin connection is doing; the app shows it in Settings."""
+    _execute(
+        """
+        UPDATE users SET garmin_status = %s, garmin_error = %s,
+               retry_after = CASE WHEN %s::int IS NULL THEN NULL ELSE now() + make_interval(mins => %s::int) END
+        WHERE id = %s AND garmin_email_enc IS NOT NULL
+        """,
+        (status, error, retry_minutes, retry_minutes, user_id),
+    )
+
+
+def _garmin_login(email: str, password: str, token_dir: str) -> tuple[Garmin | None, bool]:
+    """(client, needs_code). Uses the saved tokens; without usable ones, signs in
+    with the email + password and keeps Garmin's new tokens."""
+    garmin = Garmin(email=email, password=password, return_on_mfa=True)
+    status, _ = garmin.login(tokenstore=token_dir)
+    if status == "needs_mfa":
+        return None, True
+    if not garmin.display_name:
+        # Signed in with the password (that mode skips the profile): save the
+        # tokens, then load the profile through them.
+        garmin.client.dump(token_dir)
+        garmin = Garmin(email=email, password=password, return_on_mfa=True)
+        garmin.login(tokenstore=token_dir)
+    return garmin, False
+
+
+def login_user(user: dict) -> Garmin | None:
+    """Garmin client for one person, or None — then garmin_status says why
+    (needs_code / auth_failed / error), so they can fix it themselves in the app."""
+    user_id = user["id"]
+    token_dir = get_token_dir(user_id)
+    token_file = Path(token_dir) / "garmin_tokens.json"
+    try:
+        try:
+            garmin, needs_code = _garmin_login(user["email"], user["password"], token_dir)
+        except GarminConnectAuthenticationError:
+            if not token_file.exists():
+                raise
+            # Saved tokens no longer accepted: try the email + password once.
+            token_file.unlink(missing_ok=True)
+            garmin, needs_code = _garmin_login(user["email"], user["password"], token_dir)
+        if needs_code:
+            set_status(user_id, "needs_code")
+            log.warning(f"User {user_id}: Garmin asks for a two-factor code — waiting for them to reconnect in Settings")
+            return None
+        set_status(user_id, "connected")
+        return garmin
+    except GarminConnectAuthenticationError as e:
+        set_status(user_id, "auth_failed", str(e)[:300])
+        log.warning(f"User {user_id}: Garmin no longer accepts the saved login — {e}")
+    except GarminConnectTooManyRequestsError as e:
+        set_status(user_id, "error", "Garmin is rate-limiting sign-ins", retry_minutes=30)
+        log.warning(f"User {user_id}: Garmin rate limit — retrying in 30 min ({e})")
     except Exception as e:
-        log.warning(f"Failed to fetch users: {e}")
-        return []
+        set_status(user_id, "error", str(e)[:300], retry_minutes=15)
+        log.warning(f"User {user_id}: Garmin login failed — retrying in 15 min ({e})")
+    return None
 
 
 # ─── Date helpers ──────────────────────────────────────────────────────────────
@@ -304,21 +333,34 @@ OUTDOOR_TYPES = (
 )
 
 
-def sync_missing_gps(conn, user_id: str, max_fetch: int = GPS_BATCH_SIZE) -> int:
+# Activities whose details came back without a route (GPS off, indoor-ish
+# "outdoor" types). Their polyline stays NULL, so without this they'd be fetched
+# again on every pass and the same newest batch would block the older ones.
+# Kept per process: after a restart each is tried once more.
+_no_route: set[int] = set()
+
+
+def gps_pending(conn, user_id: str) -> int:
     placeholders = ','.join(['%s'] * len(OUTDOOR_TYPES))
     with conn.cursor() as cur:
         cur.execute(f"""
             SELECT COUNT(*) FROM activities
             WHERE polyline IS NULL AND start_lat IS NOT NULL AND user_id = %s
-              AND activity_type IN ({placeholders})
-        """, (user_id, *OUTDOOR_TYPES))
-        total_pending = cur.fetchone()[0]
+              AND activity_type IN ({placeholders}) AND NOT (activity_id = ANY(%s::bigint[]))
+        """, (user_id, *OUTDOOR_TYPES, list(_no_route)))
+        return cur.fetchone()[0]
+
+
+def sync_missing_gps(conn, user_id: str, max_fetch: int = GPS_BATCH_SIZE) -> int:
+    placeholders = ','.join(['%s'] * len(OUTDOOR_TYPES))
+    total_pending = gps_pending(conn, user_id)
+    with conn.cursor() as cur:
         cur.execute(f"""
             SELECT activity_id FROM activities
             WHERE polyline IS NULL AND start_lat IS NOT NULL AND user_id = %s
-              AND activity_type IN ({placeholders})
+              AND activity_type IN ({placeholders}) AND NOT (activity_id = ANY(%s::bigint[]))
             ORDER BY start_time DESC LIMIT %s
-        """, (user_id, *OUTDOOR_TYPES, max_fetch))
+        """, (user_id, *OUTDOOR_TYPES, list(_no_route), max_fetch))
         ids = [r[0] for r in cur.fetchall()]
     if not ids:
         log.info(f"User {user_id} GPS: all outdoor polylines up to date.")
@@ -333,6 +375,8 @@ def sync_missing_gps(conn, user_id: str, max_fetch: int = GPS_BATCH_SIZE) -> int
             db.upsert_activity_gps(conn, aid, polyline, user_id)
             if polyline:
                 stored += 1
+            else:
+                _no_route.add(aid)
             time.sleep(0.5)
         except Exception as e:
             log.warning(f"GPS fetch failed for {aid}: {e}")
@@ -365,9 +409,12 @@ def sync_missing_coords(conn, user_id: str, chunk_days: int = 30):
 CHUNK_DAYS = 30
 
 
-def sync_range(start: date, end: date, user_id: str):
+def sync_range(start: date, end: date, user_id: str, throttle: bool | None = None, on_chunk=None):
+    """Fetch and store every day from start to end (oldest first, in CHUNK_DAYS
+    pieces). throttle slows down to spare Garmin's rate limit (default: for long
+    ranges); on_chunk(chunk_end) runs after each stored piece."""
     total_days = (end - start).days + 1
-    is_large_backfill = total_days > 30
+    is_large_backfill = total_days > 30 if throttle is None else throttle
     log.info(f"User {user_id}: syncing {start} → {end} ({total_days} days)...")
 
     chunk_start = start
@@ -405,23 +452,14 @@ def sync_range(start: date, end: date, user_id: str):
         total_saved["sleep"]      += len(sleep_rows)
         total_saved["hrv"]        += len(hrv_rows)
         total_saved["activities"] += len(activity_rows)
+        if on_chunk:
+            on_chunk(chunk_end)
         chunk_start = chunk_end + timedelta(days=1)
 
     log.info(
         f"User {user_id}: done — daily:{total_saved['daily']} sleep:{total_saved['sleep']} "
         f"hrv:{total_saved['hrv']} activities:{total_saved['activities']}"
     )
-
-
-def sync_historical_gap(user_id: str):
-    backfill_start = date.today() - timedelta(days=BACKFILL_DAYS)
-    earliest = get_earliest_synced_date(user_id)
-    if earliest is None or earliest <= backfill_start + timedelta(days=1):
-        return
-    chunk_end   = earliest - timedelta(days=1)
-    chunk_start = max(backfill_start, chunk_end - timedelta(days=29))
-    log.info(f"User {user_id}: history gap — backfilling {chunk_start} → {chunk_end}")
-    sync_range(chunk_start, chunk_end, user_id)
 
 
 # ─── Enrichment ───────────────────────────────────────────────────────────────
@@ -551,37 +589,173 @@ def fetch_weather_for_activities(conn, user_id: str):
         log.info(f"User {user_id} Weather: fetched data for {updated} activities")
 
 
-# ─── Per-user sync ────────────────────────────────────────────────────────────
+# ─── Scheduling ───────────────────────────────────────────────────────────────
+#
+# One small job at a time, re-planned after each, so nobody waits behind someone
+# else's ten-year import:
+#   1. recent  — someone just connected / pressed Sync now (oldest request first)
+#   2. recent  — hourly update for anyone whose last sync is older than INTERVAL
+#   3. history — one HISTORY_CHUNK_DAYS piece of older history, newest first
+#   4. gps     — a batch of routes for activities that don't have one yet
+# A new person's first job imports the latest RECENT_DAYS, so their dashboard
+# fills within a minute or two; older history follows in the background.
 
-def sync_user(garmin_client: Garmin, user_id: str):
-    global client
-    client = garmin_client
+POLL_SECONDS       = int(os.getenv("SYNC_POLL_SECONDS", 10))
+RECENT_DAYS        = 30
+HISTORY_CHUNK_DAYS = 30
+RESYNC_DAYS        = 7      # Garmin keeps updating the last few days (sleep, HRV, late uploads)
+GPS_RETRY_SECONDS  = 6 * 3600
 
-    today  = date.today()
-    latest = get_latest_synced_date(user_id)
 
-    if latest is None:
-        start = today - timedelta(days=BACKFILL_DAYS)
-        log.info(f"User {user_id}: empty DB — backfilling {BACKFILL_DAYS} days from {start}")
-    else:
-        start = latest - timedelta(days=7)
-        log.info(f"User {user_id}: incremental sync from {start} (DB latest: {latest})")
+def next_job(candidates: list[dict], now: datetime, gps_wait_until: dict | None = None) -> tuple[dict, str] | None:
+    """Pick the next (person, kind) to work on. Pure, so it is unit-tested."""
+    gps_wait_until = gps_wait_until or {}
+    requested = [c for c in candidates if c.get("sync_requested_at")]
+    if requested:
+        return min(requested, key=lambda c: c["sync_requested_at"]), "recent"
+    due = [c for c in candidates
+           if c.get("last_sync_at") is None or (now - c["last_sync_at"]).total_seconds() >= INTERVAL]
+    if due:
+        never = datetime.min.replace(tzinfo=timezone.utc)
+        return min(due, key=lambda c: c.get("last_sync_at") or never), "recent"
+    history = [c for c in candidates
+               if c.get("history_from") and c.get("history_target") and c["history_from"] > c["history_target"]]
+    if history:
+        # whoever has the least history so far
+        return max(history, key=lambda c: c["history_from"]), "history"
+    routes = [c for c in candidates if c.get("gps_pending") and gps_wait_until.get(c["id"], 0) <= now.timestamp()]
+    if routes:
+        return routes[0], "gps"
+    return None
 
-    sync_range(start, today, user_id)
-    sync_historical_gap(user_id)
 
+def first_import_plan(today: date, latest_stored: date | None) -> tuple[date, date]:
+    """(start, history_target) for someone's first job. Days an earlier version
+    already imported (it went oldest → newest, up to latest_stored) count as done."""
+    start = today - timedelta(days=RECENT_DAYS - 1)
+    target = latest_stored + timedelta(days=1) if latest_stored else today - timedelta(days=BACKFILL_DAYS)
+    return start, min(target, start)
+
+
+def load_candidates() -> list[dict]:
+    """Everyone with a working Garmin login (or a temporary error whose wait is over)."""
     conn = db.get_conn()
-    sync_missing_coords(conn, user_id)
-    while True:
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                f"""
+                SELECT id, garmin_email_enc, garmin_pass_enc, sync_requested_at, last_sync_at,
+                       synced_until, history_from, history_target,
+                       EXISTS (SELECT 1 FROM activities a
+                               WHERE a.user_id = users.id AND a.polyline IS NULL AND a.start_lat IS NOT NULL
+                                 AND a.activity_type IN ({','.join(['%s'] * len(OUTDOOR_TYPES))})
+                                 AND NOT (a.activity_id = ANY(%s::bigint[])))
+                FROM users
+                WHERE garmin_email_enc IS NOT NULL AND garmin_pass_enc IS NOT NULL
+                  AND COALESCE(garmin_status, 'connected') IN ('connected', 'error')
+                  AND (retry_after IS NULL OR retry_after <= now())
+                """,
+                (*OUTDOOR_TYPES, list(_no_route)),
+            )
+            rows = cur.fetchall()
+    finally:
         conn.close()
-        conn = db.get_conn()
-        remaining = sync_missing_gps(conn, user_id)
-        if remaining == 0:
-            break
-    populate_missing_countries(conn, user_id)
-    compute_country_crossings(conn, user_id)
-    fetch_weather_for_activities(conn, user_id)
-    conn.close()
+    keys = ("id", "email_enc", "pass_enc", "sync_requested_at", "last_sync_at",
+            "synced_until", "history_from", "history_target", "gps_pending")
+    return [dict(zip(keys, r)) for r in rows]
+
+
+def _update_user(user_id: str, **fields) -> None:
+    """Move the import cursor (synced_until, history_from, history_target); last_sync=True also stamps last_sync_at."""
+    sets, params = [], []
+    for name in ("synced_until", "history_from", "history_target"):
+        if name in fields:
+            sets.append(f"{name} = %s")
+            params.append(fields[name])
+    if fields.get("last_sync"):
+        sets.append("last_sync_at = now()")
+    if sets:
+        _execute(f"UPDATE users SET {', '.join(sets)} WHERE id = %s", (*params, user_id))
+
+
+def run_recent(user: dict) -> None:
+    user_id, today = user["id"], date.today()
+    if user["synced_until"] is None:
+        start, target = first_import_plan(today, get_latest_synced_date(user_id))
+        log.info(f"User {user_id}: first import — latest {RECENT_DAYS} days now, then history back to {target}")
+        sync_range(start, today, user_id, throttle=False)
+        _update_user(user_id, synced_until=today, history_from=start, history_target=target, last_sync=True)
+    else:
+        start = user["synced_until"] - timedelta(days=RESYNC_DAYS - 1)
+        sync_range(start, today, user_id, on_chunk=lambda end: _update_user(user_id, synced_until=end))
+        _update_user(user_id, synced_until=today, last_sync=True)
+
+
+def run_history(user: dict) -> None:
+    user_id = user["id"]
+    end = user["history_from"] - timedelta(days=1)
+    start = max(user["history_target"], end - timedelta(days=HISTORY_CHUNK_DAYS - 1))
+    log.info(f"User {user_id}: history {start} → {end} (back to {user['history_target']})")
+    sync_range(start, end, user_id, throttle=True)
+    _update_user(user_id, history_from=start)
+
+
+def enrich(user_id: str) -> None:
+    """Routes, countries, border crossings and weather for what was just stored (each bounded)."""
+    conn = db.get_conn()
+    try:
+        sync_missing_coords(conn, user_id)
+        sync_missing_gps(conn, user_id)
+        populate_missing_countries(conn, user_id)
+        compute_country_crossings(conn, user_id)
+        fetch_weather_for_activities(conn, user_id)
+    finally:
+        conn.close()
+
+
+_gps_wait_until: dict[str, float] = {}
+
+
+def run_job(user: dict, kind: str) -> None:
+    global client
+    user_id = user["id"]
+    _execute(
+        "UPDATE users SET syncing_since = now(), "
+        "sync_requested_at = CASE WHEN %s THEN NULL ELSE sync_requested_at END WHERE id = %s",
+        (kind == "recent", user_id),
+    )
+    try:
+        try:
+            user["email"] = decrypt_credential(user["email_enc"])
+            user["password"] = decrypt_credential(user["pass_enc"])
+        except Exception as e:
+            set_status(user_id, "error", f"cannot decrypt the saved login (CREDENTIALS_KEY changed?): {e}", retry_minutes=60)
+            return
+        garmin = login_user(user)
+        if garmin is None:
+            return
+        client = garmin
+        if kind == "recent":
+            run_recent(user)
+        elif kind == "history":
+            run_history(user)
+        before = None
+        if kind == "gps":
+            conn = db.get_conn()
+            before = gps_pending(conn, user_id)
+            conn.close()
+        enrich(user_id)
+        if kind == "gps":
+            conn = db.get_conn()
+            after = gps_pending(conn, user_id)
+            conn.close()
+            # no progress (Garmin returned nothing new): leave routes for a while
+            _gps_wait_until[user_id] = time.time() + (GPS_RETRY_SECONDS if after >= before else 0)
+    except Exception as e:
+        log.error(f"User {user_id}: {kind} sync failed: {e}", exc_info=True)
+        set_status(user_id, "error", str(e)[:300], retry_minutes=15)
+    finally:
+        _execute("UPDATE users SET syncing_since = NULL WHERE id = %s", (user_id,))
 
 
 # ─── Weather background loops ─────────────────────────────────────────────────
@@ -702,23 +876,29 @@ def main():
     threading.Thread(target=_era5_loop,  daemon=True, name="era5").start()
     log.info("Weather threads started (radar every 15min, ERA5 every 30min)")
 
-    while True:
-        users = get_users_with_credentials()
-        if not users:
-            log.warning("No users with Garmin credentials yet. "
-                        "Sign in to Quarc Sport and add them under Settings → Garmin Connect.")
-        for user in users:
-            log.info(f"--- Syncing user {user['id']} ---")
-            garmin_client = login_user(user["id"], user["email"], user["password"])
-            if garmin_client is None:
-                continue
-            try:
-                sync_user(garmin_client, user["id"])
-            except Exception as e:
-                log.error(f"User {user['id']} sync failed: {e}", exc_info=True)
+    # A job cut short by a restart leaves its "syncing" flag behind.
+    _execute("UPDATE users SET syncing_since = NULL WHERE syncing_since IS NOT NULL")
+    log.info(f"Waiting for work (checking every {POLL_SECONDS}s; hourly updates, history newest first).")
 
-        log.info(f"All users synced. Sleeping {INTERVAL}s until next cycle...")
-        time.sleep(INTERVAL)
+    idle = False
+    while True:
+        try:
+            job = next_job(load_candidates(), datetime.now(timezone.utc), _gps_wait_until)
+        except Exception as e:
+            log.warning(f"Could not read the job list: {e}")
+            job = None
+        if job is None:
+            if not idle:
+                log.info("Nothing to do — everyone is up to date.")
+                idle = True
+            time.sleep(POLL_SECONDS)
+            continue
+        idle = False
+        user, kind = job
+        log.info(f"--- User {user['id']}: {kind} ---")
+        if kind == "gps":
+            _gps_wait_until[user["id"]] = time.time() + GPS_RETRY_SECONDS  # until the job says otherwise
+        run_job(user, kind)
 
 
 if __name__ == "__main__":

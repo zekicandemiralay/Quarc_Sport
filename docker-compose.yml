@@ -60,6 +60,9 @@ services:
       - SECURE_COOKIE=${SECURE_COOKIE:-true}
     volumes:
       - ./db/init.sql:/app/init.sql:ro
+      # Garmin's tokens: written here when someone connects in the app (two-factor
+      # code included), read by the sync service from the same folder.
+      - ./garth_tokens:/root/.garth
     networks:
       - app-network
 

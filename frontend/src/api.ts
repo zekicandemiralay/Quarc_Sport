@@ -1,4 +1,4 @@
-import type { DailyRow, SleepRow, HrvRow, Activity, MapActivity, Summary, DataRange, CountryStat, TouringData, TourSummary, TourDetail, User } from './types'
+import type { DailyRow, SleepRow, HrvRow, Activity, MapActivity, Summary, DataRange, CountryStat, TouringData, TourSummary, TourDetail, User, GarminStatus, GarminConnectResult } from './types'
 import { apiUrl } from './lib/apiUrl'
 import { useAuthStore } from './store/authStore'
 
@@ -51,8 +51,34 @@ export function fetchMe(): Promise<User> {
   return get('/api/me')
 }
 
-export function setGarminCredentials(email: string, password: string): Promise<{ ok: boolean }> {
-  return put('/api/garmin/credentials', { email, password })
+// Errors from these come back as a code in Error.message (e.g. "invalid_credentials"),
+// translated under settings.garmin.errors.
+
+export function fetchGarminStatus(): Promise<GarminStatus> {
+  return get('/api/garmin/status')
+}
+
+/** Checks the login with Garmin right away; two-factor accounts answer "needs_code". */
+export function connectGarmin(email: string, password: string): Promise<GarminConnectResult> {
+  return post('/api/garmin/connect', { email, password })
+}
+
+export function submitGarminCode(code: string): Promise<GarminConnectResult> {
+  return post('/api/garmin/code', { code })
+}
+
+/** Signs in again with the saved login (Garmin wants a new code); no password needed. */
+export function reconnectGarmin(): Promise<GarminConnectResult> {
+  return post('/api/garmin/reconnect', {})
+}
+
+export async function cancelGarminCode(): Promise<void> {
+  const res = await fetch(apiUrl('/api/garmin/cancel'), { method: 'POST', credentials: 'include' })
+  checkStatus(res)
+}
+
+export function syncGarminNow(): Promise<GarminStatus> {
+  return post('/api/garmin/sync', {})
 }
 
 export function deleteGarminCredentials(): Promise<void> {

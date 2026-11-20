@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { fetchDaily, fetchSleep, fetchHrv, fetchActivities, fetchSummary, fetchRange } from './api'
 import useAuthStore from './store/authStore'
@@ -6,6 +6,7 @@ import type { DailyRow, SleepRow, HrvRow, Activity, Summary, DataRange } from '.
 
 import LoginPage from './components/LoginPage'
 import SettingsPanel from './components/SettingsPanel'
+import GarminBanner from './components/GarminBanner'
 import SummaryCards from './components/SummaryCards'
 import BodyBatteryChart from './components/BodyBatteryChart'
 import BodyBatteryDeltaChart from './components/BodyBatteryDeltaChart'
@@ -114,9 +115,10 @@ export default function App() {
     return { start: daysAgo(preset.days as number), end: e }
   })()
 
-  const load = useCallback(() => {
+  // silent: refresh in place (new Garmin data arrived) instead of showing the spinner
+  const load = useCallback((silent = false) => {
     if (!userId) return
-    setLoading(true)
+    if (!silent) setLoading(true)
     setError(null)
     Promise.all([
       fetchDaily(start, end),
@@ -137,6 +139,19 @@ export default function App() {
   }, [start, end, userId])
 
   useEffect(() => { load() }, [load])
+
+  // The Garmin import stored new days: refresh the bounds and the charts quietly.
+  const reloadAll = useCallback(() => {
+    fetchRange().then(setDataRange).catch(() => {})
+    load(true)
+  }, [load])
+
+  // Back from Settings (e.g. just connected Garmin): show whatever arrived meanwhile.
+  const prevView = useRef(view)
+  useEffect(() => {
+    if (prevView.current !== 'dashboard' && view === 'dashboard') reloadAll()
+    prevView.current = view
+  }, [view, reloadAll])
 
   async function handleLogout() {
     setUserMenuOpen(false)
@@ -267,17 +282,7 @@ export default function App() {
           </div>
         )}
 
-        {!user.has_garmin && (
-          <div className="bg-blue-900/20 border border-blue-700/40 rounded-xl px-4 py-3 text-sm text-blue-200 flex flex-wrap items-center gap-3">
-            <span className="mr-auto">{t('app.connectGarmin')}</span>
-            <button
-              onClick={() => setView('settings')}
-              className="bg-blue-600 hover:bg-blue-500 text-white font-medium rounded-lg px-3 py-1.5 text-sm transition-colors"
-            >
-              {t('app.connectGarminButton')}
-            </button>
-          </div>
-        )}
+        <GarminBanner hasGarmin={user.has_garmin} onOpenSettings={() => setView('settings')} onNewData={reloadAll} />
 
         {loading ? <Spinner /> : (
           <>

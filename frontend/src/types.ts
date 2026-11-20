@@ -3,6 +3,33 @@ export interface User {
   id: string
   username: string
   has_garmin: boolean
+  /** null when not connected (servers before 1.0.1 don't send it at all) */
+  garmin_status?: GarminConnectionState | null
+}
+
+/** connected | needs_code (Garmin wants a new two-factor code) | auth_failed (login no longer accepted) | error (temporary) */
+export type GarminConnectionState = 'connected' | 'needs_code' | 'auth_failed' | 'error'
+
+/** GET /api/garmin/status — the Garmin connection and how far the import got. */
+export interface GarminStatus {
+  status: GarminConnectionState | 'not_connected'
+  email: string | null              // masked, e.g. "ze•••@gmail.com"
+  pending_code: boolean             // a sign-in is waiting for the two-factor code
+  queued: boolean                   // a sync was asked for and starts within seconds
+  syncing: boolean
+  first_import: boolean             // nothing imported yet
+  last_sync_at: string | null
+  retry_after: string | null
+  synced_until: string | null
+  history_from: string | null       // older history is imported back to this day…
+  history_target: string | null     // …and goes back to this one
+  history_done: boolean
+  history_percent: number | null
+}
+
+export interface GarminConnectResult {
+  status: 'connected' | 'needs_code'
+  method?: 'email' | 'phone' | null
 }
 
 export interface DataRange {

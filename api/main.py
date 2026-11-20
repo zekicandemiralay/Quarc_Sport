@@ -19,7 +19,8 @@ from fastapi.responses import Response
 from pydantic import BaseModel
 
 import db
-from auth import require_user, encrypt_credential
+import garmin_link
+from auth import require_user, encrypt_credential, decrypt_credential
 
 log = logging.getLogger("quarc-sport")
 
@@ -77,34 +78,194 @@ class GarminCredentialsBody(BaseModel):
     password: str
 
 
+class GarminCodeBody(BaseModel):
+    code: str
+
+
 @app.get("/api/me")
 def get_me(user: dict = Depends(require_user)):
     with db.cursor() as cur:
         cur.execute(
-            "SELECT garmin_email_enc IS NOT NULL AS has_garmin FROM users WHERE id = %s",
+            "SELECT garmin_email_enc IS NOT NULL AS has_garmin, garmin_status FROM users WHERE id = %s",
             (user["id"],),
         )
         row = cur.fetchone()
-    return {"id": user["id"], "username": user["username"], "has_garmin": bool(row and row["has_garmin"])}
+    has_garmin = bool(row and row["has_garmin"])
+    return {
+        "id": user["id"],
+        "username": user["username"],
+        "has_garmin": has_garmin,
+        "garmin_status": (row["garmin_status"] or "connected") if has_garmin else None,
+    }
+
+
+def _store_garmin_login(user_id: str, email: str, password: str) -> None:
+    """Save a Garmin login (encrypted) and ask the sync service to start right away."""
+    with db.cursor() as cur:
+        cur.execute(
+            """
+            UPDATE users SET garmin_email_enc = %s, garmin_pass_enc = %s,
+                   garmin_status = 'connected', garmin_error = NULL, retry_after = NULL,
+                   sync_requested_at = now()
+            WHERE id = %s
+            """,
+            (encrypt_credential(email), encrypt_credential(password), user_id),
+        )
+
+
+def _mask_email(email: str) -> str:
+    name, _, domain = email.partition("@")
+    return f"{name[:2]}•••@{domain}" if domain else f"{email[:2]}•••"
+
+
+def _garmin_status(user_id: str) -> dict:
+    """What the app shows about the Garmin connection and the import."""
+    with db.cursor() as cur:
+        cur.execute(
+            """
+            SELECT garmin_email_enc, garmin_status, garmin_error, sync_requested_at, syncing_since,
+                   last_sync_at, retry_after, synced_until, history_from, history_target
+            FROM users WHERE id = %s
+            """,
+            (user_id,),
+        )
+        row = cur.fetchone() or {}
+    connected = row.get("garmin_email_enc") is not None
+    email = None
+    if connected:
+        try:
+            email = _mask_email(decrypt_credential(row["garmin_email_enc"]))
+        except Exception:
+            email = None
+    until, start, target = row.get("synced_until"), row.get("history_from"), row.get("history_target")
+    history_done = bool(start and target and start <= target)
+    percent = None
+    if until and start and target:
+        span = max((until - target).days, 1)
+        percent = 100 if history_done else max(0, min(99, round(100 * (until - start).days / span)))
+    iso = lambda v: v.isoformat() if v else None  # noqa: E731
+    return {
+        "status": (row.get("garmin_status") or "connected") if connected else "not_connected",
+        "email": email,
+        "pending_code": garmin_link.has_pending_code(user_id),
+        "queued": connected and row.get("sync_requested_at") is not None,
+        "syncing": row.get("syncing_since") is not None,
+        "first_import": connected and until is None,
+        "last_sync_at": iso(row.get("last_sync_at")),
+        "retry_after": iso(row.get("retry_after")),
+        "synced_until": iso(until),
+        "history_from": iso(start),
+        "history_target": iso(target),
+        "history_done": history_done,
+        "history_percent": percent,
+    }
+
+
+def _link_error(e: garmin_link.LinkError) -> HTTPException:
+    # detail is a code the app translates (settings.garmin.errors.<code>)
+    return HTTPException(status_code=e.status, detail=e.code)
+
+
+@app.get("/api/garmin/status")
+def get_garmin_status(user: dict = Depends(require_user)):
+    return _garmin_status(user["id"])
+
+
+@app.post("/api/garmin/connect")
+def connect_garmin(body: GarminCredentialsBody, user: dict = Depends(require_user)):
+    """Check the login with Garmin, then save it. Two-factor accounts get
+    {"status": "needs_code"} and finish with POST /api/garmin/code."""
+    email = body.email.strip()
+    if not email or not body.password:
+        raise HTTPException(status_code=400, detail="missing_fields")
+    try:
+        result = garmin_link.start(user["id"], email, body.password)
+    except garmin_link.LinkError as e:
+        raise _link_error(e)
+    if result["status"] == "connected":
+        _store_garmin_login(user["id"], email, body.password)
+    return result
+
+
+@app.post("/api/garmin/code")
+def submit_garmin_code(body: GarminCodeBody, user: dict = Depends(require_user)):
+    try:
+        email, password = garmin_link.finish(user["id"], body.code)
+    except garmin_link.LinkError as e:
+        raise _link_error(e)
+    _store_garmin_login(user["id"], email, password)
+    return {"status": "connected"}
+
+
+@app.post("/api/garmin/reconnect")
+def reconnect_garmin(user: dict = Depends(require_user)):
+    """Sign in again with the saved login, e.g. when Garmin asks for a new
+    two-factor code. The person doesn't have to type their password again."""
+    with db.cursor() as cur:
+        cur.execute("SELECT garmin_email_enc, garmin_pass_enc FROM users WHERE id = %s", (user["id"],))
+        row = cur.fetchone()
+    if not row or row["garmin_email_enc"] is None:
+        raise HTTPException(status_code=400, detail="not_connected")
+    email, password = decrypt_credential(row["garmin_email_enc"]), decrypt_credential(row["garmin_pass_enc"])
+    try:
+        result = garmin_link.start(user["id"], email, password)
+    except garmin_link.LinkError as e:
+        if e.code == "invalid_credentials":
+            with db.cursor() as cur:
+                cur.execute(
+                    "UPDATE users SET garmin_status = 'auth_failed', garmin_error = NULL WHERE id = %s",
+                    (user["id"],),
+                )
+        raise _link_error(e)
+    if result["status"] == "connected":
+        _store_garmin_login(user["id"], email, password)
+    return result
+
+
+@app.post("/api/garmin/cancel", status_code=204)
+def cancel_garmin_code(user: dict = Depends(require_user)):
+    garmin_link.cancel(user["id"])
+
+
+@app.post("/api/garmin/sync")
+def sync_garmin_now(user: dict = Depends(require_user)):
+    """Sync now: the sync service picks this person up within seconds."""
+    with db.cursor() as cur:
+        cur.execute(
+            """
+            UPDATE users SET sync_requested_at = COALESCE(sync_requested_at, now()), retry_after = NULL
+            WHERE id = %s AND garmin_email_enc IS NOT NULL AND COALESCE(garmin_status, 'connected') IN ('connected', 'error')
+            RETURNING id
+            """,
+            (user["id"],),
+        )
+        if cur.fetchone() is None:
+            raise HTTPException(status_code=400, detail="not_connected")
+        cur.execute("UPDATE users SET garmin_status = 'connected', garmin_error = NULL WHERE id = %s", (user["id"],))
+    return _garmin_status(user["id"])
 
 
 @app.put("/api/garmin/credentials")
 def set_garmin_credentials(body: GarminCredentialsBody, user: dict = Depends(require_user)):
-    """Store encrypted Garmin credentials. Values are never returned by any endpoint."""
-    with db.cursor() as cur:
-        cur.execute(
-            "UPDATE users SET garmin_email_enc = %s, garmin_pass_enc = %s WHERE id = %s",
-            (encrypt_credential(body.email.strip()), encrypt_credential(body.password), user["id"]),
-        )
+    """Save a login without checking it first — what app versions before 1.0.1
+    send. The sync service checks it and reports through the status."""
+    garmin_link.forget(user["id"])
+    _store_garmin_login(user["id"], body.email.strip(), body.password)
     return {"ok": True}
 
 
 @app.delete("/api/garmin/credentials", status_code=204)
 def delete_garmin_credentials(user: dict = Depends(require_user)):
-    """Forget the stored Garmin login — syncing stops. Already-synced data stays."""
+    """Disconnect Garmin: the login and Garmin's tokens are deleted and syncing
+    stops. Already-synced data stays."""
+    garmin_link.forget(user["id"])
     with db.cursor() as cur:
         cur.execute(
-            "UPDATE users SET garmin_email_enc = NULL, garmin_pass_enc = NULL WHERE id = %s",
+            """
+            UPDATE users SET garmin_email_enc = NULL, garmin_pass_enc = NULL, garmin_status = NULL,
+                   garmin_error = NULL, sync_requested_at = NULL, retry_after = NULL
+            WHERE id = %s
+            """,
             (user["id"],),
         )
 

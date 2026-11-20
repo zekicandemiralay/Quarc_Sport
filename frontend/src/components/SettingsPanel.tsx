@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { setGarminCredentials, deleteGarminCredentials } from '../api'
 import useAuthStore from '../store/authStore'
 import { setLanguage } from '../i18n'
 import StorePromo from './StorePromo'
+import GarminConnect from './GarminConnect'
 import {
   semverGt, getPlatform, getCurrentVersion, fetchLatestRelease, getDownloadUrl, installUpdate, NO_RELEASE,
   type Release,
@@ -15,94 +15,6 @@ interface Props {
 
 const card  = 'bg-slate-900 border border-slate-800 rounded-2xl p-6'
 const input = 'w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-blue-500'
-
-function Message({ kind, children }: { kind: 'error' | 'ok'; children: React.ReactNode }) {
-  const cls = kind === 'error'
-    ? 'bg-red-900/30 border-red-700/50 text-red-300'
-    : 'bg-green-900/30 border-green-700/50 text-green-300'
-  return <div className={`border rounded-lg px-3 py-2 text-sm ${cls}`}>{children}</div>
-}
-
-// ─── Garmin Connect ───────────────────────────────────────────────────────────
-
-function GarminSection() {
-  const { t } = useTranslation()
-  const hasGarmin = useAuthStore(s => s.user?.has_garmin ?? false)
-  const [email, setEmail]     = useState('')
-  const [pass, setPass]       = useState('')
-  const [error, setError]     = useState<string | null>(null)
-  const [saved, setSaved]     = useState(false)
-  const [loading, setLoading] = useState(false)
-
-  const refresh = () => useAuthStore.getState().checkSession()
-
-  async function save(e: React.FormEvent) {
-    e.preventDefault()
-    if (!email.trim() || !pass) return
-    setLoading(true); setError(null); setSaved(false)
-    try {
-      await setGarminCredentials(email.trim(), pass)
-      setSaved(true)
-      setEmail(''); setPass('')
-      await refresh()
-    } catch (err) {
-      setError(err instanceof Error ? err.message : t('settings.garmin.saveFailed'))
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  async function remove() {
-    if (!window.confirm(t('settings.garmin.removeConfirm'))) return
-    setError(null); setSaved(false)
-    try {
-      await deleteGarminCredentials()
-      await refresh()
-    } catch (err) {
-      setError(err instanceof Error ? err.message : t('settings.garmin.saveFailed'))
-    }
-  }
-
-  return (
-    <div className={card}>
-      <h2 className="text-sm font-semibold text-slate-200 mb-1">{t('settings.garmin.title')}</h2>
-      <p className="text-xs text-slate-500 mb-4">{t('settings.garmin.hint')}</p>
-      <div className={`mb-4 text-xs font-medium ${hasGarmin ? 'text-green-400' : 'text-amber-400'}`}>
-        {hasGarmin ? t('settings.garmin.connected') : t('settings.garmin.notConnected')}
-      </div>
-      <form onSubmit={save} className="space-y-3">
-        {error && <Message kind="error">{error}</Message>}
-        {saved && <Message kind="ok">{t('settings.garmin.saved')}</Message>}
-        <div className="space-y-1">
-          <label className="text-xs text-slate-400">{t('settings.garmin.email')}</label>
-          <input
-            type="email" autoComplete="off" value={email} required
-            onChange={e => setEmail(e.target.value)} className={input} placeholder="you@example.com"
-          />
-        </div>
-        <div className="space-y-1">
-          <label className="text-xs text-slate-400">{t('settings.garmin.password')}</label>
-          <input
-            type="password" autoComplete="new-password" value={pass} required
-            onChange={e => setPass(e.target.value)} className={input} placeholder="••••••••"
-          />
-        </div>
-        <button
-          type="submit" disabled={loading}
-          className="w-full bg-green-700 hover:bg-green-600 disabled:opacity-50 text-white font-medium rounded-lg py-2 text-sm transition-colors"
-        >
-          {loading ? t('common.saving') : t('settings.garmin.save')}
-        </button>
-        {hasGarmin && (
-          <button type="button" onClick={remove} className="w-full text-sm text-red-400 hover:underline">
-            {t('settings.garmin.remove')}
-          </button>
-        )}
-      </form>
-      <p className="text-xs text-slate-500 mt-4">{t('settings.garmin.mfaHint')}</p>
-    </div>
-  )
-}
 
 // ─── App updates ──────────────────────────────────────────────────────────────
 
@@ -199,7 +111,7 @@ export default function SettingsPanel({ onBack }: Props) {
           <p className="text-xs text-slate-500 mt-4">{t('settings.accountHint')}</p>
         </div>
 
-        <GarminSection />
+        <GarminConnect />
 
         <div className={card}>
           <h2 className="text-sm font-semibold text-slate-200 mb-3">{t('settings.language')}</h2>

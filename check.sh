@@ -44,10 +44,14 @@ if [ -n "$USERS" ]; then
   ok "database: ${USERS} user(s), ${WITH_GARMIN} with a Garmin login saved"
   ACTS=$(q "SELECT count(*) FROM activities"); LATEST=$(q "SELECT coalesce(max(date)::text,'-') FROM daily_summary")
   ok "synced data: ${ACTS} activities, latest daily summary ${LATEST}"
+  IMPORTING=$(q "SELECT count(*) FROM users WHERE garmin_email_enc IS NOT NULL AND (synced_until IS NULL OR history_from > history_target)")
+  [ "${IMPORTING:-0}" != "0" ] && ok "${IMPORTING} person(s) still importing their Garmin history (newest first)"
+  ATTENTION=$(q "SELECT count(*) FROM users WHERE garmin_status IN ('needs_code','auth_failed')")
+  [ "${ATTENTION:-0}" != "0" ] && warn "${ATTENTION} person(s) must reconnect Garmin — the app asks them to (Settings → Garmin Connect)"
 else
   fail "could not read the database"
 fi
-docker compose logs --tail 200 sync 2>/dev/null | grep -qi "login failed" && warn "sync log has Garmin login failures — see: docker compose logs sync"
+docker compose logs --tail 200 sync 2>/dev/null | grep -qi "login failed\|rate limit" && warn "sync log has Garmin login problems (retried automatically) — see: docker compose logs sync"
 
 echo
 [ "$FAIL" -eq 0 ] && printf "${GREEN}${BOLD}All checks passed.${NC}\n" || { printf "${RED}${BOLD}${FAIL} check(s) failed.${NC}\n"; exit 1; }

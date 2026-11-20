@@ -19,6 +19,26 @@ CREATE TABLE IF NOT EXISTS users (
     created_at       TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- Garmin connection and import progress, per person. The API writes the status
+-- when someone connects in the app; the sync service keeps it current.
+--   garmin_status: NULL (not connected) | connected | needs_code (Garmin wants a
+--   two-factor code again) | auth_failed (login no longer accepted) | error (temporary)
+ALTER TABLE users ADD COLUMN IF NOT EXISTS garmin_status     TEXT;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS garmin_error      TEXT;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS sync_requested_at TIMESTAMPTZ;  -- "sync me now": just connected, or Sync now
+ALTER TABLE users ADD COLUMN IF NOT EXISTS syncing_since     TIMESTAMPTZ;  -- set while the sync service works on them
+ALTER TABLE users ADD COLUMN IF NOT EXISTS last_sync_at      TIMESTAMPTZ;  -- last finished sync of the recent days
+ALTER TABLE users ADD COLUMN IF NOT EXISTS retry_after       TIMESTAMPTZ;  -- backing off after a Garmin error
+-- Import cursor: every day from history_from to synced_until has been fetched.
+-- The newest month comes first, then older history going backwards to history_target.
+ALTER TABLE users ADD COLUMN IF NOT EXISTS synced_until      DATE;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS history_from      DATE;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS history_target    DATE;
+
+-- Logins saved before garmin_status existed.
+UPDATE users SET garmin_status = 'connected'
+WHERE garmin_status IS NULL AND garmin_email_enc IS NOT NULL;
+
 -- Daily summary: steps, calories, stress, body battery, SpO2, hydration
 CREATE TABLE IF NOT EXISTS daily_summary (
     user_id             TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE ON UPDATE CASCADE,

@@ -15,7 +15,11 @@
     "dateLabel": "{{start}} → {{end}}  ({{count}} days)",
     "loadFailed": "Failed to load data",
     "connectGarmin": "Connect your Garmin account to start syncing your activities, sleep and health data.",
-    "connectGarminButton": "Connect Garmin"
+    "connectGarminButton": "Connect Garmin",
+    "garminAttention": "Your Garmin connection needs attention — open Settings to fix it.",
+    "openSettings": "Open Settings",
+    "importingRecent": "Importing your latest Garmin data — your charts fill in within a minute or two.",
+    "importingHistory": "Importing older history: back to {{date}} ({{percent}}%)"
   },
   "tabs": {
     "Overview": "Overview",
@@ -52,17 +56,48 @@
     "language": "Language",
     "garmin": {
       "title": "Garmin Connect",
-      "hint": "Stored encrypted. Cannot be retrieved after saving — only used by the sync service.",
-      "connected": "Connected — your data syncs every hour.",
+      "hint": "Sign in with your Garmin Connect account. Quarc Sport checks it with Garmin right away; it is then stored encrypted and only used to fetch your data.",
       "notConnected": "Not connected yet.",
       "email": "Garmin Connect email",
       "password": "Garmin Connect password",
-      "save": "Save Garmin login",
-      "saved": "Garmin login saved. Syncing starts within the hour.",
-      "saveFailed": "Could not save the Garmin login",
-      "remove": "Remove my Garmin login",
-      "removeConfirm": "Remove your Garmin login? Syncing stops; the data already synced stays.",
-      "mfaHint": "Two-factor Garmin account? After saving, ask the server admin to run garmin-login.sh for you once."
+      "connect": "Connect Garmin",
+      "checking": "Checking with Garmin…",
+      "connected": "Connected",
+      "connectedAs": "Connected as {{email}}",
+      "justConnected": "Connected! Your import has started — the latest month first, then your older history.",
+      "codeSent": "Garmin sent you a verification code. Enter it here:",
+      "codeSentEmail": "Garmin sent a verification code to your email. Enter it here:",
+      "codeSentPhone": "Garmin sent a verification code to your phone. Enter it here:",
+      "code": "Verification code",
+      "confirmCode": "Confirm code",
+      "syncNow": "Sync now",
+      "sendCode": "Send me a new code",
+      "reenter": "Enter my Garmin login again",
+      "change": "Use a different Garmin account",
+      "remove": "Disconnect Garmin",
+      "removeConfirm": "Disconnect Garmin? Syncing stops; the data already imported stays.",
+      "state": {
+        "queued": "Starting your import…",
+        "firstImport": "Importing your latest month — this usually takes a minute or two.",
+        "syncing": "Syncing…",
+        "upToDate": "Up to date · last synced {{when}}",
+        "history": "Importing older history: back to {{date}} ({{percent}}%)",
+        "needsCode": "Garmin is asking for a new verification code.",
+        "authFailed": "Garmin no longer accepts your saved login (did the password change?). Enter it again.",
+        "error": "Couldn't reach Garmin. Trying again automatically {{when}}.",
+        "errorSoon": "Couldn't reach Garmin. Trying again shortly."
+      },
+      "errors": {
+        "invalid_credentials": "Garmin didn't accept this email and password. Check them and try again.",
+        "invalid_code": "That code didn't work. Check it and try again.",
+        "code_expired": "The verification step expired. Please connect again.",
+        "rate_limited": "Garmin is limiting sign-ins right now. Wait a few minutes and try again.",
+        "too_many_attempts": "Too many tries. To protect your Garmin account, wait 15 minutes before trying again.",
+        "garmin_unreachable": "Couldn't reach Garmin. Try again in a moment.",
+        "missing_fields": "Enter your Garmin email and password.",
+        "not_connected": "Garmin isn't connected.",
+        "generic": "Something went wrong. Please try again."
+      }
     }
   },
   "updates": {

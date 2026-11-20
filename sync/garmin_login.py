@@ -1,9 +1,10 @@
 """
-One-time interactive Garmin Connect login, for accounts with two-factor authentication.
+Admin fallback: a Garmin Connect login from the server's terminal.
 
-The sync service cannot answer an MFA prompt by itself. Run this once and it saves
-Garmin's OAuth tokens for the account, so syncing carries on without asking again
-(until the tokens eventually expire).
+Not needed normally — people connect Garmin themselves in the app (Settings →
+Garmin Connect), two-factor code included. This is for when the app can't, e.g.
+to help someone over the phone. It saves Garmin's OAuth tokens for the account,
+so syncing carries on without asking again (until the tokens eventually expire).
 
   bash garmin-login.sh <your Quarc username>
 
@@ -51,7 +52,11 @@ def main() -> int:
     )
     client.login(tokenstore=token_dir)
 
-    print(f"Logged in. Tokens saved for {username}; the sync service will use them automatically.")
+    # Clear any "needs a code" state and start their import right away.
+    sync.set_status(user_id, "connected")
+    sync._execute("UPDATE users SET sync_requested_at = now() WHERE id = %s", (user_id,))
+
+    print(f"Logged in. Tokens saved for {username}; their sync starts within seconds.")
     return 0
 
 

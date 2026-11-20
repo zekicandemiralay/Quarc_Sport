@@ -15,7 +15,11 @@
     "dateLabel": "{{start}} → {{end}}  ({{count}} gün)",
     "loadFailed": "Veriler yüklenemedi",
     "connectGarmin": "Aktivitelerini, uykunu ve sağlık verilerini senkronlamak için Garmin hesabını bağla.",
-    "connectGarminButton": "Garmin'i bağla"
+    "connectGarminButton": "Garmin'i bağla",
+    "garminAttention": "Garmin bağlantın ilgilenmeni bekliyor — düzeltmek için Ayarlar'ı aç.",
+    "openSettings": "Ayarlar'ı aç",
+    "importingRecent": "En son Garmin verilerin içe aktarılıyor — grafiklerin bir iki dakika içinde dolacak.",
+    "importingHistory": "Eski geçmiş içe aktarılıyor: {{date}} tarihine kadar (%{{percent}})"
   },
   "tabs": {
     "Overview": "Genel Bakış",
@@ -52,17 +56,48 @@
     "language": "Dil",
     "garmin": {
       "title": "Garmin Connect",
-      "hint": "Şifrelenmiş olarak saklanır. Kaydedildikten sonra geri okunamaz — yalnızca senkronizasyon servisi kullanır.",
-      "connected": "Bağlı — verilerin her saat senkronlanır.",
+      "hint": "Garmin Connect hesabınla giriş yap. Quarc Sport bilgilerini hemen Garmin'de kontrol eder; sonra şifrelenerek saklanır ve yalnızca verilerini almak için kullanılır.",
       "notConnected": "Henüz bağlı değil.",
       "email": "Garmin Connect e-postası",
       "password": "Garmin Connect şifresi",
-      "save": "Garmin girişini kaydet",
-      "saved": "Garmin girişi kaydedildi. Senkronizasyon bir saat içinde başlar.",
-      "saveFailed": "Garmin girişi kaydedilemedi",
-      "remove": "Garmin girişimi kaldır",
-      "removeConfirm": "Garmin girişin kaldırılsın mı? Senkronizasyon durur; zaten senkronlanan veriler kalır.",
-      "mfaHint": "Garmin hesabında iki adımlı doğrulama mı var? Kaydettikten sonra sunucu yöneticisinden senin için bir kez garmin-login.sh çalıştırmasını iste."
+      "connect": "Garmin'i bağla",
+      "checking": "Garmin'de kontrol ediliyor…",
+      "connected": "Bağlı",
+      "connectedAs": "{{email}} olarak bağlı",
+      "justConnected": "Bağlandı! İçe aktarma başladı — önce son bir ay, ardından eski geçmişin.",
+      "codeSent": "Garmin sana bir doğrulama kodu gönderdi. Kodu buraya gir:",
+      "codeSentEmail": "Garmin e-postana bir doğrulama kodu gönderdi. Kodu buraya gir:",
+      "codeSentPhone": "Garmin telefonuna bir doğrulama kodu gönderdi. Kodu buraya gir:",
+      "code": "Doğrulama kodu",
+      "confirmCode": "Kodu onayla",
+      "syncNow": "Şimdi senkronla",
+      "sendCode": "Bana yeni bir kod gönder",
+      "reenter": "Garmin girişimi yeniden gir",
+      "change": "Başka bir Garmin hesabı kullan",
+      "remove": "Garmin bağlantısını kes",
+      "removeConfirm": "Garmin bağlantısı kesilsin mi? Senkronizasyon durur; içe aktarılmış veriler kalır.",
+      "state": {
+        "queued": "İçe aktarma başlıyor…",
+        "firstImport": "Son bir ayın içe aktarılıyor — bu genellikle bir iki dakika sürer.",
+        "syncing": "Senkronlanıyor…",
+        "upToDate": "Güncel · son senkronizasyon {{when}}",
+        "history": "Eski geçmiş içe aktarılıyor: {{date}} tarihine kadar (%{{percent}})",
+        "needsCode": "Garmin yeni bir doğrulama kodu istiyor.",
+        "authFailed": "Garmin kayıtlı girişini artık kabul etmiyor (şifre mi değişti?). Lütfen yeniden gir.",
+        "error": "Garmin'e ulaşılamadı. {{when}} otomatik olarak yeniden denenecek.",
+        "errorSoon": "Garmin'e ulaşılamadı. Kısa süre içinde yeniden denenecek."
+      },
+      "errors": {
+        "invalid_credentials": "Garmin bu e-posta ve şifreyi kabul etmedi. Kontrol edip tekrar dene.",
+        "invalid_code": "Bu kod işe yaramadı. Kontrol edip tekrar dene.",
+        "code_expired": "Doğrulama adımının süresi doldu. Lütfen yeniden bağlan.",
+        "rate_limited": "Garmin şu anda girişleri sınırlıyor. Birkaç dakika bekleyip tekrar dene.",
+        "too_many_attempts": "Çok fazla deneme yapıldı. Garmin hesabını korumak için 15 dakika bekleyip tekrar dene.",
+        "garmin_unreachable": "Garmin'e ulaşılamadı. Biraz sonra tekrar dene.",
+        "missing_fields": "Garmin e-postanı ve şifreni gir.",
+        "not_connected": "Garmin bağlı değil.",
+        "generic": "Bir şeyler ters gitti. Lütfen tekrar dene."
+      }
     }
   },
   "updates": {
