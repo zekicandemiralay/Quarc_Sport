@@ -19,7 +19,9 @@
     "garminAttention": "Your Garmin connection needs attention — open Settings to fix it.",
     "openSettings": "Open Settings",
     "importingRecent": "Importing your latest Garmin data — your charts fill in within a minute or two.",
-    "importingHistory": "Importing older history: back to {{date}} ({{percent}}%)"
+    "importingHistory": "Importing older history: back to {{date}} ({{percent}}%)",
+    "noDataInRange": "No data in this period — pick a longer range.",
+    "dateRange": "{{start}} → {{end}}"
   },
   "tabs": {
     "Overview": "Overview",
@@ -97,6 +99,31 @@
         "missing_fields": "Enter your Garmin email and password.",
         "not_connected": "Garmin isn't connected.",
         "generic": "Something went wrong. Please try again."
+      }
+    },
+    "strava": {
+      "hint": "Your activities from Strava. Strava has no sleep or daily health data, so only activities appear — shown on their own, never mixed with another source.",
+      "notConfigured": "Strava isn't set up on this server yet. The server owner adds a Strava API application first (see the README).",
+      "connect": "Connect Strava",
+      "connected": "Connected",
+      "waiting": "Finish in the Strava page that just opened, then come back here.",
+      "privacy": "You choose on Strava what to allow. You can disconnect at any time.",
+      "importing": "Importing your Strava activities, newest first… {{count}} so far.",
+      "imported": "{{count}} activities imported",
+      "lastSync": "updated {{when}}",
+      "rateLimited": "Waiting for Strava's rate limit — continues {{when}}.",
+      "syncNow": "Sync now",
+      "syncing": "Syncing…",
+      "disconnect": "Disconnect",
+      "disconnectConfirm": "Disconnect Strava? The Strava activities stored here are deleted too (Strava asks for that). Your Strava account itself is not touched.",
+      "authFailed": "Strava no longer allows access (it was revoked or expired). Connect again to continue.",
+      "reconnect": "Connect again",
+      "temporaryError": "Strava could not be reached just now. It will try again by itself.",
+      "errors": {
+        "generic": "Something went wrong. Please try again.",
+        "not_configured": "Strava isn't set up on this server yet.",
+        "no_public_url": "This server doesn't know its own address yet (PUBLIC_URL).",
+        "not_connected": "Strava is not connected."
       }
     }
   },
@@ -250,7 +277,23 @@
     "INDOOR_CYCLING": "Indoor Cycling",
     "TREADMILL_RUNNING": "Treadmill Running",
     "YOGA": "Yoga",
-    "OTHER": "Other"
+    "OTHER": "Other",
+    "GRAVEL_CYCLING": "Gravel Cycling",
+    "E_BIKE_RIDE": "E-Bike Ride",
+    "E_MOUNTAIN_BIKE_RIDE": "E-Mountain Bike Ride",
+    "VIRTUAL_RIDE": "Virtual Ride",
+    "VIRTUAL_RUN": "Virtual Run",
+    "ALPINE_SKI": "Alpine Ski",
+    "NORDIC_SKI": "Nordic Ski",
+    "SNOWBOARD": "Snowboard",
+    "KAYAKING": "Kayaking",
+    "ROWING": "Rowing",
+    "WORKOUT": "Workout",
+    "CROSSFIT": "Crossfit",
+    "ELLIPTICAL": "Elliptical",
+    "ROCK_CLIMBING": "Rock Climbing",
+    "SOCCER": "Soccer",
+    "TENNIS": "Tennis"
   },
   "summary": {
     "avgSteps": "Avg Steps",

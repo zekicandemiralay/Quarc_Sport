@@ -20,6 +20,7 @@ from pydantic import BaseModel
 
 import db
 import garmin_link
+import strava_api
 from auth import require_user, encrypt_credential, decrypt_credential
 
 log = logging.getLogger("quarc-sport")
@@ -44,6 +45,8 @@ app = FastAPI(title="Quarc Sport API", version="3.0.0", lifespan=lifespan)
 
 # Like the other Quarc backends: reflect the caller's origin and allow cookies
 # (the Android app's WebView calls the server from a different origin).
+app.include_router(strava_api.router)
+
 app.add_middleware(
     CORSMiddleware,
     allow_origin_regex=".*",

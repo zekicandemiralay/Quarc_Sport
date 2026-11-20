@@ -4,6 +4,7 @@ import useAuthStore from '../store/authStore'
 import { setLanguage } from '../i18n'
 import StorePromo from './StorePromo'
 import GarminConnect from './GarminConnect'
+import StravaConnect from './StravaConnect'
 import {
   semverGt, getPlatform, getCurrentVersion, fetchLatestRelease, getDownloadUrl, installUpdate, NO_RELEASE,
   type Release,
@@ -112,6 +113,8 @@ export default function SettingsPanel({ onBack }: Props) {
         </div>
 
         <GarminConnect />
+
+        <StravaConnect />
 
         <div className={card}>
           <h2 className="text-sm font-semibold text-slate-200 mb-3">{t('settings.language')}</h2>

@@ -4,6 +4,7 @@ import { fetchDaily, fetchSleep, fetchHrv, fetchActivities, fetchSummary, fetchR
 import useAuthStore from './store/authStore'
 import { useSourceStore, useAvailability } from './store/sourceStore'
 import SourcePicker from './components/SourcePicker'
+import StravaBanner from './components/StravaBanner'
 import type { DailyRow, SleepRow, HrvRow, Activity, Summary, DataRange } from './types'
 
 import LoginPage from './components/LoginPage'
@@ -216,7 +217,8 @@ export default function App() {
 
   // ── Dashboard ──────────────────────────────────────────────────────────────
 
-  const dateLabel = t('app.dateLabel', { start, end, count: daily.length })
+  // sources without daily rows (Strava) have no "N days" to report
+  const dateLabel = daily.length > 0 ? t('app.dateLabel', { start, end, count: daily.length }) : t('app.dateRange', { start, end })
 
   return (
     <div className="min-h-screen bg-slate-950" onClick={() => setUserMenuOpen(false)}>
@@ -331,6 +333,7 @@ export default function App() {
           </div>
         ) : (
           source === 'garmin' && <GarminBanner hasGarmin={user.has_garmin} onOpenSettings={() => setView('settings')} onNewData={reloadAll} />
+          || (source === 'strava' && <StravaBanner onOpenSettings={() => setView('settings')} onNewData={reloadAll} />)
         )}
 
         {sourcesLoaded && sources.length > 0 && sourceInfo && !sourceInfo.has_data && (
@@ -338,6 +341,10 @@ export default function App() {
             <p className="text-sm text-slate-300 font-medium">{t('sources.empty', { source: t(`sources.${sourceInfo.source}`) })}</p>
             <p className="text-xs text-slate-500 mt-1">{t('sources.emptyHint')}</p>
           </div>
+        )}
+
+        {!loading && sourcesLoaded && sourceInfo?.has_data && !daily.length && !sleep.length && !hrv.length && !activities.length && (
+          <div className="bg-slate-800 rounded-xl p-6 text-center text-sm text-slate-400">{t('app.noDataInRange')}</div>
         )}
 
         {loading ? <Spinner /> : (

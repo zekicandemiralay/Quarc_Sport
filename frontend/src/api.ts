@@ -1,4 +1,4 @@
-import type { DailyRow, SleepRow, HrvRow, Activity, MapActivity, Summary, DataRange, CountryStat, TouringData, TourSummary, TourDetail, User, GarminStatus, GarminConnectResult, SourcesResponse } from './types'
+import type { DailyRow, SleepRow, HrvRow, Activity, MapActivity, Summary, DataRange, CountryStat, TouringData, TourSummary, TourDetail, User, GarminStatus, GarminConnectResult, SourcesResponse, StravaStatus } from './types'
 import { apiUrl } from './lib/apiUrl'
 import { useAuthStore } from './store/authStore'
 import { useSourceStore } from './store/sourceStore'
@@ -60,6 +60,26 @@ async function del(path: string): Promise<void> {
 
 export function fetchSources(): Promise<SourcesResponse> {
   return get('/api/sources')
+}
+
+// ─── Strava ───────────────────────────────────────────────────────────────────
+
+export function fetchStravaStatus(): Promise<StravaStatus> {
+  return get('/api/strava/status')
+}
+
+/** Strava's "allow access" address for this person (open it outside the app). */
+export function authorizeStrava(): Promise<{ url: string }> {
+  return post('/api/strava/authorize', {})
+}
+
+export function syncStravaNow(): Promise<StravaStatus> {
+  return post('/api/strava/sync', {})
+}
+
+/** Disconnects Strava and deletes the Strava activities stored here. */
+export function disconnectStrava(): Promise<void> {
+  return del('/api/strava')
 }
 
 // ─── Me + Garmin connection ───────────────────────────────────────────────────

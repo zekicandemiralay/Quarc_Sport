@@ -19,6 +19,7 @@ from dotenv import load_dotenv
 from garminconnect import Garmin, GarminConnectAuthenticationError, GarminConnectTooManyRequestsError
 
 import db
+import strava
 import weather as wx
 
 try:
@@ -330,6 +331,7 @@ OUTDOOR_TYPES = (
     'HIKING', 'WALKING', 'SWIMMING', 'OPEN_WATER_SWIMMING', 'MULTISPORT',
     'TRIATHLON', 'RESORT_SKIING_SNOWBOARDING', 'BACKCOUNTRY_SKIING',
     'STAND_UP_PADDLEBOARDING', 'ROWING', 'OTHER',
+    'GRAVEL_CYCLING', 'E_BIKE_RIDE', 'E_MOUNTAIN_BIKE_RIDE',   # Strava's cycling variants (their routes get countries/weather too)
 )
 
 
@@ -867,6 +869,19 @@ def _era5_loop():
 
 # ─── Main ─────────────────────────────────────────────────────────────────────
 
+def enrich_common(user_id: str) -> None:
+    """Countries, border crossings and weather for whatever sources stored for this person
+    (no Garmin calls: used by the Strava job)."""
+    conn = db.get_conn()
+    try:
+        populate_missing_countries(conn, user_id)
+        compute_country_crossings(conn, user_id)
+        fetch_weather_for_activities(conn, user_id)
+    finally:
+        conn.close()
+
+
+
 def main():
     db.ensure_schema()
     log.info("Schema check done.")
@@ -878,6 +893,10 @@ def main():
 
     # A job cut short by a restart leaves its "syncing" flag behind.
     _execute("UPDATE users SET syncing_since = NULL WHERE syncing_since IS NOT NULL")
+    _execute("UPDATE source_connections SET syncing_since = NULL WHERE syncing_since IS NOT NULL")
+
+    # Strava has its own loop (its own tokens, rate limits and pace); it never touches Garmin's.
+    threading.Thread(target=strava.loop, args=(enrich_common,), daemon=True, name="strava").start()
     log.info(f"Waiting for work (checking every {POLL_SECONDS}s; hourly updates, history newest first).")
 
     idle = False

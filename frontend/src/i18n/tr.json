@@ -19,7 +19,9 @@
     "garminAttention": "Garmin bağlantın ilgilenmeni bekliyor — düzeltmek için Ayarlar'ı aç.",
     "openSettings": "Ayarlar'ı aç",
     "importingRecent": "En son Garmin verilerin içe aktarılıyor — grafiklerin bir iki dakika içinde dolacak.",
-    "importingHistory": "Eski geçmiş içe aktarılıyor: {{date}} tarihine kadar (%{{percent}})"
+    "importingHistory": "Eski geçmiş içe aktarılıyor: {{date}} tarihine kadar (%{{percent}})",
+    "noDataInRange": "Bu dönemde veri yok — daha uzun bir aralık seç.",
+    "dateRange": "{{start}} → {{end}}"
   },
   "tabs": {
     "Overview": "Genel Bakış",
@@ -97,6 +99,31 @@
         "missing_fields": "Garmin e-postanı ve şifreni gir.",
         "not_connected": "Garmin bağlı değil.",
         "generic": "Bir şeyler ters gitti. Lütfen tekrar dene."
+      }
+    },
+    "strava": {
+      "hint": "Strava aktivitelerin. Strava uyku veya günlük sağlık verisi tutmaz, bu yüzden yalnızca aktiviteler görünür — kendi başına gösterilir, başka bir kaynakla asla karıştırılmaz.",
+      "notConfigured": "Strava bu sunucuda henüz kurulu değil. Sunucu sahibi önce bir Strava API uygulaması eklemeli (README'ye bak).",
+      "connect": "Strava'yı bağla",
+      "connected": "Bağlı",
+      "waiting": "Az önce açılan Strava sayfasında işlemi tamamla, sonra buraya dön.",
+      "privacy": "Neye izin vereceğini Strava'da sen seçersin. İstediğin zaman bağlantıyı kesebilirsin.",
+      "importing": "Strava aktivitelerin içe aktarılıyor, en yeniden başlayarak… şu ana kadar {{count}}.",
+      "imported": "{{count}} aktivite içe aktarıldı",
+      "lastSync": "{{when}} güncellendi",
+      "rateLimited": "Strava'nın istek sınırı bekleniyor — {{when}} devam eder.",
+      "syncNow": "Şimdi senkronla",
+      "syncing": "Senkronlanıyor…",
+      "disconnect": "Bağlantıyı kes",
+      "disconnectConfirm": "Strava bağlantısı kesilsin mi? Burada saklanan Strava aktiviteleri de silinir (Strava bunu ister). Strava hesabına dokunulmaz.",
+      "authFailed": "Strava artık erişime izin vermiyor (iptal edilmiş veya süresi dolmuş). Devam etmek için tekrar bağlan.",
+      "reconnect": "Tekrar bağlan",
+      "temporaryError": "Strava'ya şu anda ulaşılamadı. Kendiliğinden tekrar deneyecek.",
+      "errors": {
+        "generic": "Bir şeyler ters gitti. Lütfen tekrar dene.",
+        "not_configured": "Strava bu sunucuda henüz kurulu değil.",
+        "no_public_url": "Bu sunucu kendi adresini (PUBLIC_URL) henüz bilmiyor.",
+        "not_connected": "Strava bağlı değil."
       }
     }
   },
@@ -250,7 +277,23 @@
     "INDOOR_CYCLING": "Salon Bisikleti",
     "TREADMILL_RUNNING": "Koşu Bandı",
     "YOGA": "Yoga",
-    "OTHER": "Diğer"
+    "OTHER": "Diğer",
+    "GRAVEL_CYCLING": "Gravel Bisiklet",
+    "E_BIKE_RIDE": "E-Bisiklet",
+    "E_MOUNTAIN_BIKE_RIDE": "E-Dağ Bisikleti",
+    "VIRTUAL_RIDE": "Sanal Sürüş",
+    "VIRTUAL_RUN": "Sanal Koşu",
+    "ALPINE_SKI": "Alp Kayağı",
+    "NORDIC_SKI": "Kayaklı Koşu",
+    "SNOWBOARD": "Snowboard",
+    "KAYAKING": "Kano",
+    "ROWING": "Kürek",
+    "WORKOUT": "Antrenman",
+    "CROSSFIT": "Crossfit",
+    "ELLIPTICAL": "Eliptik",
+    "ROCK_CLIMBING": "Kaya Tırmanışı",
+    "SOCCER": "Futbol",
+    "TENNIS": "Tenis"
   },
   "summary": {
     "avgSteps": "Ort. Adım",

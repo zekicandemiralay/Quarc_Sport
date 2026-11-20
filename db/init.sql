@@ -191,13 +191,17 @@ CREATE TABLE IF NOT EXISTS source_connections (
     syncing_since     TIMESTAMPTZ,          -- set while the sync service works on them
     last_sync_at      TIMESTAMPTZ,
     retry_after       TIMESTAMPTZ,          -- backing off after an error / rate limit
-    newest_at         TIMESTAMPTZ,          -- Strava: start of the newest activity stored (incremental sync)
-    history_before    TIMESTAMPTZ,          -- Strava: the first import has covered everything newer than this
+    history_before    TIMESTAMPTZ,          -- Strava: the first import reads what happened before this moment
+    history_page      INT NOT NULL DEFAULT 1,  -- Strava: the next page of that import
     history_done      BOOLEAN NOT NULL DEFAULT FALSE,
     items_synced      INT NOT NULL DEFAULT 0,
     created_at        TIMESTAMPTZ DEFAULT NOW(),
     PRIMARY KEY (user_id, source)
 );
+
+-- (added after the table first shipped, so it also has to be an ALTER)
+ALTER TABLE source_connections ADD COLUMN IF NOT EXISTS history_page INT NOT NULL DEFAULT 1;
+ALTER TABLE source_connections ADD COLUMN IF NOT EXISTS history_before TIMESTAMPTZ;
 
 -- ERA5 weather grid — shared across users, keyed by rounded lat/lng + date + hour
 CREATE TABLE IF NOT EXISTS weather_grid_points (

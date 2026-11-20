@@ -67,6 +67,25 @@ password, **Connect Garmin**.
 `bash garmin-login.sh <Quarc username>` still exists as an admin fallback (a terminal sign-in with the code), but isn't
 needed normally.
 
+### Strava (optional)
+People can also connect **Strava**. Strava only has activities (no sleep, steps or daily health data), so that is all its view
+shows. One Strava API application serves the whole server:
+
+1. At <https://www.strava.com/settings/api> create an application. Set **Authorization Callback Domain** to this server's host
+   name (`quarcnet0.tail84500c.ts.net`), and upload any icon.
+2. Put the *Client ID* and *Client Secret* in `.env` as `STRAVA_CLIENT_ID` / `STRAVA_CLIENT_SECRET` (and check `PUBLIC_URL`), then
+   `bash deploy.sh`.
+3. A new Strava application can connect **one** athlete (you) until you raise its capacity to **10** on that same page; more than 10
+   needs Strava's own review, which can take weeks and isn't guaranteed.
+4. Each person then opens **Settings → Strava → Connect Strava**, allows access on Strava's page and is sent back. Their
+   history is imported newest first, then kept up to date every 30 minutes. Disconnecting deletes the Strava activities stored
+   here (Strava's API terms ask for that); the person's Strava account is untouched.
+
+### One source at a time
+Garmin, Strava (and the phone's Health Connect) are **never mixed**. Each is stored and shown on its own; with more than one, a
+**Data source** picker appears in the header. Only what a source actually reports is offered: a source without sleep has no Sleep
+tab, one without Body Battery has no Body Battery chart, and nothing is calculated to fill a gap.
+
 ### Moving from the old Quarc Garmin app
 On the old server run `bash backup.sh` in `Quarc_Garmin`, copy the backup folder here, then:
 ```bash

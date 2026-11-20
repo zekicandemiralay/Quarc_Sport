@@ -261,3 +261,18 @@ export interface SourcesResponse {
   sources: SourceInfo[]
   default: SourceId
 }
+
+export interface StravaStatus {
+  configured: boolean
+  connected: boolean
+  /** not_connected | connected | auth_failed | error */
+  status: string
+  error: string | null
+  athlete: string | null
+  last_sync_at: string | null
+  syncing: boolean
+  queued: boolean
+  retry_after: string | null
+  imported: number
+  history_done: boolean
+}
