@@ -28,6 +28,7 @@ mobile/android/app/src/main/assets/capacitor.plugins.json
 mobile/www/*
 !mobile/www/index.html
 mobile/*.keystore
+mobile/keystore-password.txt
 desktop/src-tauri/target/
 desktop/src-tauri/gen/
 
