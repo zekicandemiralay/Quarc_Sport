@@ -48,10 +48,13 @@ if [ -n "$USERS" ]; then
   [ "${IMPORTING:-0}" != "0" ] && ok "${IMPORTING} person(s) still importing their Garmin history (newest first)"
   ATTENTION=$(q "SELECT count(*) FROM users WHERE garmin_status IN ('needs_code','auth_failed')")
   [ "${ATTENTION:-0}" != "0" ] && warn "${ATTENTION} person(s) must reconnect Garmin — the app asks them to (Settings → Garmin Connect)"
+  # Only when every sign-in method failed; a 429 on one method that another one
+  # got past is normal and not counted.
+  TEMP_ERR=$(q "SELECT count(*) FROM users WHERE garmin_status = 'error'")
+  [ "${TEMP_ERR:-0}" != "0" ] && warn "${TEMP_ERR} person(s) can't reach Garmin right now (retried automatically) — see: docker compose logs sync"
 else
   fail "could not read the database"
 fi
-docker compose logs --tail 200 sync 2>/dev/null | grep -qi "login failed\|rate limit" && warn "sync log has Garmin login problems (retried automatically) — see: docker compose logs sync"
 
 echo
 [ "$FAIL" -eq 0 ] && printf "${GREEN}${BOLD}All checks passed.${NC}\n" || { printf "${RED}${BOLD}${FAIL} check(s) failed.${NC}\n"; exit 1; }
