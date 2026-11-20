@@ -46,7 +46,7 @@ Edit `.env`:
 bash deploy.sh
 bash check.sh
 ```
-Open `https://quarcnet0.tail84500c.ts.net:4007` (Music 4000, Notes 4001, Weather 4002, Translate 4003, Cleaning 4004,
+Open `https://quarcnet0.tail84500c.ts.net:4007` (Music 4000, Notes 4001, Weather 4002, Translate 4003,
 Calendar 4005, Store 4006, **Sport 4007**) and sign in with your Quarc account.
 
 ### Connecting Garmin
@@ -139,14 +139,16 @@ cd frontend && npm test      # translations: en/tr keys match, every t('key') ex
 ```
 
 ### Releasing
-Not released yet. Tag `vX.Y.Z` and push; the workflow builds the desktop installers and a signed Android APK. It needs two
-repository secrets: `KEYSTORE_BASE64` (base64 of this app's own keystore, key alias `quarc-sport`) and `KEYSTORE_PASSWORD`.
+Tag `vX.Y.Z` and push; the workflow builds the desktop installers and a signed Android APK. It uses two repository
+secrets, both set: `KEYSTORE_BASE64` (base64 of this app's own keystore, key alias `quarc-sport`) and `KEYSTORE_PASSWORD`.
+The keystore and its password live only in `mobile/quarc-sport.keystore` and `mobile/keystore-password.txt` (git-ignored);
+every release must be signed with it, or Android refuses the update.
 Keep patch bumps within the Quarc Store promo window (`'com.quarc.sport': '1.0.10'` in `frontend/src/lib/storeSso.js`).
 
 ### Quarc Store
-The app carries the Store kit (single sign-on, phone sign-in, required updates). For the Store to install it and sign it in,
-Sport still has to be added to the Store's catalog (Store → Admin → Catalog → Add app: package `com.quarc.sport`, repo
-`zekicandemiralay/Quarc_Sport`, web URL port 4007), and to `STORE_PROMO_UNTIL` in `Quarc_Store/sso-kit/web/storeSso.js`.
+The app carries the Store kit (single sign-on, phone sign-in, required updates). It is in the Store's catalog
+(`Quarc_Store/backend/src/seed.js`) and in `STORE_PROMO_UNTIL` in `Quarc_Store/sso-kit/web/storeSso.js`, so the Store
+installs it, updates it and signs it in like the other Quarc apps.
 
 ### Logo
 Master: `QuarcNet/logos/sport.svg` (+ `logos/adaptive/sport-*.svg`). `frontend/public/logo.png` (512 px), `desktop/logo.png` and
