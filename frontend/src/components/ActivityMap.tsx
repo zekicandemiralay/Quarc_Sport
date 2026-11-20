@@ -354,8 +354,10 @@ export default function ActivityMap({ start: defaultStart, end: defaultEnd, high
         <div className="rounded-lg overflow-hidden" style={{ height: 500 }}>
           <MapContainer center={[0, 0]} zoom={2} style={{ height: '100%', width: '100%' }}>
             <TileLayer
-              url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
-              attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> &copy; <a href="https://carto.com/attributions">CARTO</a>'
+              url={apiUrl('/tiles/{z}/{x}/{y}.png')}
+              attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+              className="map-dark"
+              maxZoom={19}
             />
             {allPts.length > 0 && <AutoFit pts={allPts} />}
             <DeselectOnMapClick onDeselect={() => setSelectedId(null)} />

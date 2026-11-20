@@ -88,6 +88,9 @@ docker compose logs -f sync    # what the Garmin sync is doing
 ```
 The backup holds `.env` and the database together, which can decrypt every saved Garmin login — keep it private.
 
+Map tiles come from OpenStreetMap: the `frontend` container fetches them once, identifies itself to OSM as Quarc Sport, and
+keeps them in a cache volume (`tile_cache`), so no map traffic leaves your devices and your login cookie never goes upstream.
+
 Services: `db` (PostgreSQL, internal only), `sync` (Garmin → database, weather), `api` (FastAPI, port 8000 internal),
 `frontend` (nginx, HTTPS on `4007`, sends `/api/auth/*` to quarc-auth and `/api/*` to the API).
 

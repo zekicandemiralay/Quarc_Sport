@@ -16,3 +16,11 @@ body {
 ::-webkit-scrollbar-thumb {
   @apply bg-slate-600 rounded;
 }
+
+/* Base map: OpenStreetMap tiles inverted into a dark map. Only the base layer carries this class. */
+.map-dark {
+  filter: invert(1) hue-rotate(180deg) brightness(0.95) contrast(0.9);
+}
+.leaflet-container {
+  background: #1e293b;
+}

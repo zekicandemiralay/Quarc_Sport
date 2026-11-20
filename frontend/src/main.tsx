@@ -5,6 +5,7 @@ import RequiredUpdateGate from './components/RequiredUpdateGate'
 import StorePromo from './components/StorePromo'
 import './i18n'
 import './index.css'
+import 'leaflet/dist/leaflet.css'
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>

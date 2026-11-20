@@ -13,6 +13,12 @@ const apiProxy = {
     target: process.env.VITE_API_PROXY_TARGET || 'http://localhost:8000',
     changeOrigin: true,
   },
+  // OpenStreetMap tiles; in production nginx fetches and caches them (see nginx.conf)
+  '/tiles': {
+    target: 'https://tile.openstreetmap.org',
+    changeOrigin: true,
+    rewrite: (path: string) => path.replace(/^\/tiles/, ''),
+  },
 }
 
 export default defineConfig({

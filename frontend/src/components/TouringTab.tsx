@@ -15,6 +15,7 @@ import type { WeatherVariable } from './WeatherGridLayer'
 import TrainingLoadChart from './TrainingLoadChart'
 import ActivityPaceChart from './ActivityPaceChart'
 import { dateLocale, locale, typeLabel } from '../i18n'
+import { apiUrl } from '../lib/apiUrl'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -568,8 +569,10 @@ function TourMapView({ activities, sleep }: { activities: TouringActivity[]; sle
               />
             ) : (
               <TileLayer
-                url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
-                attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> &copy; <a href="https://carto.com/attributions">CARTO</a>'
+                url={apiUrl('/tiles/{z}/{x}/{y}.png')}
+                attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                className="map-dark"
+                maxZoom={19}
               />
             )}
             {allPts.length > 0 && <AutoFit pts={allPts} fitKey={fitKey} />}

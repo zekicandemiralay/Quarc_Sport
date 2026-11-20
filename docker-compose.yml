@@ -74,6 +74,7 @@ services:
       - "4007:443"
     volumes:
       - /var/lib/tailscale/certs:/etc/nginx/ssl:ro
+      - tile_cache:/var/cache/nginx/osm    # OpenStreetMap tiles, cached by nginx
     depends_on:
       - api
     restart: unless-stopped
@@ -90,3 +91,4 @@ networks:
 
 volumes:
   postgres_data:
+  tile_cache:
