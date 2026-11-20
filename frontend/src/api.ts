@@ -1,4 +1,4 @@
-import type { DailyRow, SleepRow, HrvRow, Activity, MapActivity, Summary, DataRange, CountryStat, TouringData, TourSummary, TourDetail, User, GarminStatus, GarminConnectResult, SourcesResponse, StravaStatus } from './types'
+import type { DailyRow, SleepRow, HrvRow, Activity, MapActivity, Summary, DataRange, CountryStat, TouringData, TourSummary, TourDetail, User, GarminStatus, GarminConnectResult, SourcesResponse, StravaStatus, HealthConnectStatus } from './types'
 import { apiUrl } from './lib/apiUrl'
 import { useAuthStore } from './store/authStore'
 import { useSourceStore } from './store/sourceStore'
@@ -80,6 +80,24 @@ export function syncStravaNow(): Promise<StravaStatus> {
 /** Disconnects Strava and deletes the Strava activities stored here. */
 export function disconnectStrava(): Promise<void> {
   return del('/api/strava')
+}
+
+// ─── Phone (Health Connect) ───────────────────────────────────────────────────
+
+export function fetchHealthConnectStatus(): Promise<HealthConnectStatus> {
+  return get('/api/health-connect/status')
+}
+
+/** What the Android app read from Health Connect; the server stores it as the "health_connect" source. */
+export function ingestHealthConnect(body: {
+  daily: Record<string, unknown>[]; sleep: Record<string, unknown>[]; activities: Record<string, unknown>[]; device?: string
+}): Promise<{ daily: number; sleep: number; activities: number }> {
+  return post('/api/health-connect/ingest', body)
+}
+
+/** Stops the phone as a source and deletes what it uploaded. */
+export function disconnectHealthConnect(): Promise<void> {
+  return del('/api/health-connect')
 }
 
 // ─── Me + Garmin connection ───────────────────────────────────────────────────

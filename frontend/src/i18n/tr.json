@@ -125,6 +125,34 @@
         "no_public_url": "Bu sunucu kendi adresini (PUBLIC_URL) henüz bilmiyor.",
         "not_connected": "Strava bağlı değil."
       }
+    },
+    "phone": {
+      "title": "Telefon (Health Connect)",
+      "hint": "Telefonunun ve saatinin Android'in Health Connect'inde tuttuğu adım, uyku ve antrenmanlar. Kendi başına gösterilir, başka bir kaynakla asla karıştırılmaz — ve yalnızca telefonunun gerçekten sahip olduğu veriler.",
+      "androidOnly": "Health Connect telefonda yaşar, bu yüzden yalnızca Quarc Sport Android uygulaması okuyabilir. Bağlanmak için Android uygulamasını aç.",
+      "connectedFrom": "Bağlı · son yükleme {{when}}",
+      "unavailable": "Health Connect bu telefonda kullanılamıyor. Play Store'dan yükle.",
+      "install": "Health Connect'i al",
+      "updateRequired": "Quarc Sport'un kullanabilmesi için Health Connect'in güncellenmesi gerekiyor.",
+      "update": "Health Connect'i güncelle",
+      "explain": "Quarc Sport, Health Connect'ten adım, mesafe, kalori, nabız, uyku ve antrenmanları salt okunur olarak okur. Neye izin vereceğini sen seçersin ve istediğin zaman değiştirebilirsin.",
+      "allow": "Erişime izin ver",
+      "start": "Senkronlamayı başlat",
+      "syncing": "Senkronlanıyor",
+      "lastUpload": "son yükleme {{when}}",
+      "counts": "{{daily}} gün · {{sleep}} gece uyku · {{activities}} antrenman saklandı",
+      "uploaded": "{{daily}} gün, {{sleep}} gece uyku ve {{activities}} antrenman yüklendi.",
+      "historyHint": "Android, eski verileri okumaya da izin vermedikçe uygulamanın yalnızca son 30 günü okumasına izin verir. Daha fazlasını almak için “İzinleri yönet”e dokunup izin ver.",
+      "partial": "Bazı veri türlerine izin verilmedi, bu yüzden onlar eksik olacak.",
+      "syncNow": "Şimdi senkronla",
+      "working": "Çalışıyor…",
+      "managePermissions": "İzinleri yönet",
+      "disconnect": "Bağlantıyı kes",
+      "disconnectConfirm": "Telefon senkronlaması durdurulsun ve sunucuda saklanan telefon verileri silinsin mi? Health Connect'in telefonda tuttuğu veriler etkilenmez.",
+      "errors": {
+        "generic": "Bir şeyler ters gitti. Lütfen tekrar dene.",
+        "permission": "Health Connect bunu okumaya izin vermedi. “İzinleri yönet”e dokunup izin ver."
+      }
     }
   },
   "updates": {
@@ -187,7 +215,8 @@
       "rem": "REM (dk)",
       "light": "Hafif (dk)",
       "awake": "Uyanık (dk)",
-      "score": "Skor"
+      "score": "Skor",
+      "titleNoScore": "Uyku Evreleri"
     },
     "hrRange": {
       "title": "Günlük Nabız Aralığı",
@@ -293,7 +322,14 @@
     "ELLIPTICAL": "Eliptik",
     "ROCK_CLIMBING": "Kaya Tırmanışı",
     "SOCCER": "Futbol",
-    "TENNIS": "Tenis"
+    "TENNIS": "Tenis",
+    "WEIGHTLIFTING": "Halter",
+    "ROWING_MACHINE": "Kürek Makinesi",
+    "STAIR_CLIMBING": "Merdiven Çıkma",
+    "PILATES": "Pilates",
+    "HIIT": "HIIT",
+    "CALISTHENICS": "Calisthenics",
+    "SKIING": "Kayak"
   },
   "summary": {
     "avgSteps": "Ort. Adım",

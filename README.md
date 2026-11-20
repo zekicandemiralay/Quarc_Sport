@@ -81,6 +81,18 @@ shows. One Strava API application serves the whole server:
    history is imported newest first, then kept up to date every 30 minutes. Disconnecting deletes the Strava activities stored
    here (Strava's API terms ask for that); the person's Strava account is untouched.
 
+### Phone (Android Health Connect)
+Health Connect keeps the data your phone and watch collect (steps, sleep, workouts, heart rate) and has **no cloud API**, so only the
+**Quarc Sport Android app** can read it. In the app: **Settings → Phone (Health Connect)** → *Allow access* → *Start syncing*. The app
+then uploads when it opens and whenever you come back to it. What it reads, read-only: steps, distance, calories, floors, heart rate (min/max/
+resting), sleep sessions with stages, and workouts (type, time, distance, calories, heart rate, climb). Whatever Health Connect doesn't
+have simply isn't shown. Good to know:
+- Android lets an app read **30 days** back unless you also allow *reading older data* (Settings → Manage permissions); with it the first sync goes back a year.
+- Routes (GPS) of workouts are not imported yet, so the phone source has no map.
+- One sleep entry per day (the longest session, so a nap doesn't replace the night).
+- Needs Android 8 or newer, and Health Connect (built in from Android 14, a Play Store app before that).
+- Disconnecting stops syncing and deletes the phone's data from the server; Health Connect itself on the phone is untouched.
+
 ### One source at a time
 Garmin, Strava (and the phone's Health Connect) are **never mixed**. Each is stored and shown on its own; with more than one, a
 **Data source** picker appears in the header. Only what a source actually reports is offered: a source without sleep has no Sleep

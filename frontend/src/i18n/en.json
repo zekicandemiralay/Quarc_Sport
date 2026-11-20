@@ -125,6 +125,34 @@
         "no_public_url": "This server doesn't know its own address yet (PUBLIC_URL).",
         "not_connected": "Strava is not connected."
       }
+    },
+    "phone": {
+      "title": "Phone (Health Connect)",
+      "hint": "Steps, sleep and workouts your phone and watch keep in Android's Health Connect. Shown on their own, never mixed with another source — and only what your phone actually has.",
+      "androidOnly": "Health Connect lives on the phone, so only the Quarc Sport Android app can read it. Open the Android app to connect.",
+      "connectedFrom": "Connected · last upload {{when}}",
+      "unavailable": "Health Connect isn't available on this phone. Install it from the Play Store.",
+      "install": "Get Health Connect",
+      "updateRequired": "Health Connect needs an update before Quarc Sport can use it.",
+      "update": "Update Health Connect",
+      "explain": "Quarc Sport reads steps, distance, calories, heart rate, sleep and workouts from Health Connect — read-only. You choose what to allow, and you can change it any time.",
+      "allow": "Allow access",
+      "start": "Start syncing",
+      "syncing": "Syncing",
+      "lastUpload": "last upload {{when}}",
+      "counts": "{{daily}} days · {{sleep}} nights of sleep · {{activities}} workouts stored",
+      "uploaded": "Uploaded {{daily}} days, {{sleep}} nights of sleep and {{activities}} workouts.",
+      "historyHint": "Android only lets an app read the last 30 days unless you also allow reading older data. Tap “Manage permissions” and allow it to import more.",
+      "partial": "Some data types were not allowed, so those will be missing.",
+      "syncNow": "Sync now",
+      "working": "Working…",
+      "managePermissions": "Manage permissions",
+      "disconnect": "Disconnect",
+      "disconnectConfirm": "Stop syncing the phone and delete the phone data stored on the server? What Health Connect holds on the phone is not touched.",
+      "errors": {
+        "generic": "Something went wrong. Please try again.",
+        "permission": "Health Connect did not allow reading that. Tap “Manage permissions” and allow it."
+      }
     }
   },
   "updates": {
@@ -187,7 +215,8 @@
       "rem": "REM (min)",
       "light": "Light (min)",
       "awake": "Awake (min)",
-      "score": "Score"
+      "score": "Score",
+      "titleNoScore": "Sleep Stages"
     },
     "hrRange": {
       "title": "Daily Heart Rate Range",
@@ -293,7 +322,14 @@
     "ELLIPTICAL": "Elliptical",
     "ROCK_CLIMBING": "Rock Climbing",
     "SOCCER": "Soccer",
-    "TENNIS": "Tennis"
+    "TENNIS": "Tennis",
+    "WEIGHTLIFTING": "Weightlifting",
+    "ROWING_MACHINE": "Rowing Machine",
+    "STAIR_CLIMBING": "Stair Climbing",
+    "PILATES": "Pilates",
+    "HIIT": "HIIT",
+    "CALISTHENICS": "Calisthenics",
+    "SKIING": "Skiing"
   },
   "summary": {
     "avgSteps": "Avg Steps",

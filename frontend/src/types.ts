@@ -276,3 +276,10 @@ export interface StravaStatus {
   imported: number
   history_done: boolean
 }
+
+export interface HealthConnectStatus {
+  connected: boolean
+  last_sync_at: string | null
+  device: string | null
+  counts: { daily: number; sleep: number; activities: number }
+}

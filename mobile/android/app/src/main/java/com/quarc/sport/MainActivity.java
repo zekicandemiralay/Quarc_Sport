@@ -8,6 +8,7 @@ public class MainActivity extends BridgeActivity {
     public void onCreate(Bundle savedInstanceState) {
         registerPlugin(UpdaterPlugin.class);
         registerPlugin(QuarcSsoPlugin.class);
+        registerPlugin(HealthConnectPlugin.class);
         super.onCreate(savedInstanceState);
     }
 }

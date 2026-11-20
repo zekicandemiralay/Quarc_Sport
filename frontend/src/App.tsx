@@ -5,6 +5,7 @@ import useAuthStore from './store/authStore'
 import { useSourceStore, useAvailability } from './store/sourceStore'
 import SourcePicker from './components/SourcePicker'
 import StravaBanner from './components/StravaBanner'
+import { watchHealthConnect } from './lib/healthConnect'
 import type { DailyRow, SleepRow, HrvRow, Activity, Summary, DataRange } from './types'
 
 import LoginPage from './components/LoginPage'
@@ -116,6 +117,11 @@ export default function App() {
 
   // Check the existing login (shared quarc-auth cookie) on mount
   useEffect(() => { useAuthStore.getState().checkSession() }, [])
+
+  // Android app: upload the phone's Health Connect data when the app opens and when it comes back
+  useEffect(() => {
+    if (userId) watchHealthConnect(() => { fetchSources().then(r => useSourceStore.getState().setSources(r)).catch(() => {}) })
+  }, [userId])
 
   // Which sources this person has (and what each holds), once per login
   useEffect(() => {
@@ -355,7 +361,7 @@ export default function App() {
                 {summary && <SummaryCards summary={summary} />}
                 <ChartGrid>
                   {has('daily_summary', 'body_battery_high') && <BodyBatteryChart data={daily} />}
-                  {has('sleep', 'duration_seconds') && <SleepChart data={sleep} />}
+                  {has('sleep', 'duration_seconds') && <SleepChart data={sleep} withScore={has('sleep', 'sleep_score')} />}
                   {has('daily_summary', 'steps') && <StepsRollingChart data={daily} />}
                   {has('daily_summary', 'resting_hr') && <RollingHRChart data={daily} />}
                 </ChartGrid>
@@ -389,7 +395,7 @@ export default function App() {
             {/* ── Sleep ────────────────────────────────────────────────── */}
             {tab === 'Sleep' && (
               <ChartGrid>
-                {has('sleep', 'duration_seconds') && <SleepChart data={sleep} />}
+                {has('sleep', 'duration_seconds') && <SleepChart data={sleep} withScore={has('sleep', 'sleep_score')} />}
                 {has('sleep', 'duration_seconds') && <SleepDebtChart data={sleep} />}
                 {has('sleep', 'avg_spo2', 'avg_respiration', 'sleep_score') && <SleepRespirationChart data={sleep} />}
                 {has('sleep', 'start_time') && <SleepScheduleChart data={sleep} />}
