@@ -262,7 +262,8 @@
     "sleepScore": "Uyku Skoru",
     "sleepAvg": "ort. {{hours}}sa",
     "spo2": "SpO2",
-    "bpm": "atım/dk"
+    "bpm": "atım/dk",
+    "activities7d": "Aktivite (7g)"
   },
   "activities": {
     "title": "Aktiviteler",
@@ -483,5 +484,16 @@
     "noToursHint": "Bir tarih aralığı seç, Yeni Tur'a tıkla ve aktivitelerini seç",
     "actsShort": "{{count}} akt.",
     "browse": "Göz at: {{start}} – {{end}}"
+  },
+  "sources": {
+    "picker": "Veri kaynağı",
+    "garmin": "Garmin",
+    "strava": "Strava",
+    "health_connect": "Telefon (Health Connect)",
+    "empty": "{{source}} kaynağından henüz veri yok.",
+    "emptyHint": "Senkronize olur olmaz burada görünür.",
+    "connectNone": "Verilerini görmek için Garmin, Strava veya telefonunun Health Connect'ini bağla.",
+    "connectButton": "Kaynak bağla",
+    "onlyOne": "Her kaynak tek başına gösterilir — asla karıştırılmaz."
   }
 }

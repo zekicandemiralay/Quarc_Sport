@@ -1,7 +1,9 @@
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback, useRef, Children } from 'react'
 import { useTranslation } from 'react-i18next'
-import { fetchDaily, fetchSleep, fetchHrv, fetchActivities, fetchSummary, fetchRange } from './api'
+import { fetchDaily, fetchSleep, fetchHrv, fetchActivities, fetchSummary, fetchRange, fetchSources } from './api'
 import useAuthStore from './store/authStore'
+import { useSourceStore, useAvailability } from './store/sourceStore'
+import SourcePicker from './components/SourcePicker'
 import type { DailyRow, SleepRow, HrvRow, Activity, Summary, DataRange } from './types'
 
 import LoginPage from './components/LoginPage'
@@ -59,6 +61,15 @@ function daysAgo(n: number): string {
 const TABS = ['Overview', 'Health', 'Sleep', 'Activity', 'Touring'] as const
 type Tab = typeof TABS[number]
 
+// ─── Chart grid ───────────────────────────────────────────────────────────────
+
+/** Two columns; children that render nothing (no data for this source) simply aren't there. */
+function ChartGrid({ children }: { children: React.ReactNode }) {
+  const items = Children.toArray(children).filter(Boolean)
+  if (items.length === 0) return null
+  return <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">{items}</div>
+}
+
 // ─── Spinner ──────────────────────────────────────────────────────────────────
 
 function Spinner() {
@@ -79,6 +90,10 @@ export default function App() {
   const authChecked = !useAuthStore(s => s.loading)
   const logout = useAuthStore(s => s.logout)
   const userId = user?.id  // data reloads only when the signed-in person changes, not on every session refresh
+  const source = useSourceStore(s => s.current)
+  const sources = useSourceStore(s => s.sources)
+  const sourcesLoaded = useSourceStore(s => s.loaded)
+  const { info: sourceInfo, has, hasTable } = useAvailability()
   const [view, setView]   = useState<View>('dashboard')
   const [userMenuOpen, setUserMenuOpen] = useState(false)
 
@@ -101,10 +116,16 @@ export default function App() {
   // Check the existing login (shared quarc-auth cookie) on mount
   useEffect(() => { useAuthStore.getState().checkSession() }, [])
 
-  // Fetch the DB bounds once on login
+  // Which sources this person has (and what each holds), once per login
   useEffect(() => {
-    if (userId) fetchRange().then(setDataRange).catch(() => {})
+    if (!userId) { useSourceStore.getState().reset(); return }
+    fetchSources().then(r => useSourceStore.getState().setSources(r)).catch(() => {})
   }, [userId])
+
+  // The data bounds of the shown source
+  useEffect(() => {
+    if (userId && sourcesLoaded) fetchRange().then(setDataRange).catch(() => {})
+  }, [userId, source, sourcesLoaded])
 
   // Derive start/end — custom dates take priority over presets
   const { start, end } = (() => {
@@ -117,7 +138,7 @@ export default function App() {
 
   // silent: refresh in place (new Garmin data arrived) instead of showing the spinner
   const load = useCallback((silent = false) => {
-    if (!userId) return
+    if (!userId || !sourcesLoaded) return
     if (!silent) setLoading(true)
     setError(null)
     Promise.all([
@@ -136,12 +157,13 @@ export default function App() {
       })
       .catch(e => setError(String(e)))
       .finally(() => setLoading(false))
-  }, [start, end, userId])
+  }, [start, end, userId, source, sourcesLoaded])
 
   useEffect(() => { load() }, [load])
 
   // The Garmin import stored new days: refresh the bounds and the charts quietly.
   const reloadAll = useCallback(() => {
+    fetchSources().then(r => useSourceStore.getState().setSources(r)).catch(() => {})
     fetchRange().then(setDataRange).catch(() => {})
     load(true)
   }, [load])
@@ -152,6 +174,19 @@ export default function App() {
     if (prevView.current !== 'dashboard' && view === 'dashboard') reloadAll()
     prevView.current = view
   }, [view, reloadAll])
+
+  // Only offer what this source actually has. Nothing is calculated to fill a gap.
+  const hasHealth = has('daily_summary', 'steps', 'resting_hr', 'min_hr_day', 'max_hr_day', 'active_calories', 'total_calories',
+                        'active_time_seconds', 'floors_ascended', 'body_battery_high') || has('hrv', 'hrv_last_night', 'hrv_weekly_avg')
+  const hasSleep = has('sleep', 'duration_seconds')
+  const hasActivities = hasTable('activities')
+  const hasRoutes = has('activities', 'polyline', 'start_lat')
+  const visibleTabs = TABS.filter(tb =>
+    tb === 'Overview' || (tb === 'Health' && hasHealth) || (tb === 'Sleep' && hasSleep) ||
+    (tb === 'Activity' && hasActivities) || (tb === 'Touring' && hasRoutes))
+  useEffect(() => {
+    if (sourcesLoaded && !visibleTabs.includes(tab)) setTab('Overview')
+  }, [sourcesLoaded, source, visibleTabs.join(','), tab]) // eslint-disable-line react-hooks/exhaustive-deps
 
   async function handleLogout() {
     setUserMenuOpen(false)
@@ -215,6 +250,8 @@ export default function App() {
           )}
         </div>
 
+        <SourcePicker />
+
         {/* User menu */}
         <div className="relative" onClick={e => e.stopPropagation()}>
           <button
@@ -259,7 +296,7 @@ export default function App() {
       {/* Tabs */}
       <div className="border-b border-slate-800 px-6">
         <div className="flex gap-1">
-          {TABS.map(tabKey => (
+          {visibleTabs.map(tabKey => (
             <button
               key={tabKey}
               onClick={() => setTab(tabKey)}
@@ -282,22 +319,39 @@ export default function App() {
           </div>
         )}
 
-        <GarminBanner hasGarmin={user.has_garmin} onOpenSettings={() => setView('settings')} onNewData={reloadAll} />
+        {sourcesLoaded && sources.length === 0 ? (
+          <div className="rounded-xl px-4 py-3 text-sm flex flex-wrap items-center gap-3 border border-blue-700/40 bg-blue-900/20 text-blue-200">
+            <span className="mr-auto">{t('sources.connectNone')}</span>
+            <button
+              onClick={() => setView('settings')}
+              className="bg-blue-600 hover:bg-blue-500 text-white font-medium rounded-lg px-3 py-1.5 text-sm transition-colors"
+            >
+              {t('sources.connectButton')}
+            </button>
+          </div>
+        ) : (
+          source === 'garmin' && <GarminBanner hasGarmin={user.has_garmin} onOpenSettings={() => setView('settings')} onNewData={reloadAll} />
+        )}
+
+        {sourcesLoaded && sources.length > 0 && sourceInfo && !sourceInfo.has_data && (
+          <div className="bg-slate-800 rounded-xl p-8 text-center">
+            <p className="text-sm text-slate-300 font-medium">{t('sources.empty', { source: t(`sources.${sourceInfo.source}`) })}</p>
+            <p className="text-xs text-slate-500 mt-1">{t('sources.emptyHint')}</p>
+          </div>
+        )}
 
         {loading ? <Spinner /> : (
-          <>
+          <div key={source ?? 'none'} className="space-y-5">
             {/* ── Overview ─────────────────────────────────────────────── */}
             {tab === 'Overview' && (
               <>
                 {summary && <SummaryCards summary={summary} />}
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                  <BodyBatteryChart data={daily} />
-                  <SleepChart data={sleep} />
-                </div>
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                  <StepsRollingChart data={daily} />
-                  <RollingHRChart data={daily} />
-                </div>
+                <ChartGrid>
+                  {has('daily_summary', 'body_battery_high') && <BodyBatteryChart data={daily} />}
+                  {has('sleep', 'duration_seconds') && <SleepChart data={sleep} />}
+                  {has('daily_summary', 'steps') && <StepsRollingChart data={daily} />}
+                  {has('daily_summary', 'resting_hr') && <RollingHRChart data={daily} />}
+                </ChartGrid>
                 {activities.length > 0 && dataRange.earliest && (
                   <ActivityHeatmap
                     data={activities}
@@ -311,59 +365,51 @@ export default function App() {
             {/* ── Health ───────────────────────────────────────────────── */}
             {tab === 'Health' && (
               <>
-                <DailyHRRangeChart data={daily} />
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                  <RollingHRChart data={daily} />
-                  <HrvChart data={hrv} />
-                </div>
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                  <BodyBatteryChart data={daily} />
-                  <BodyBatteryDeltaChart data={daily} />
-                </div>
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                  <CaloriesChart data={daily} />
-                  <ActiveTimeChart data={daily} />
-                </div>
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                  <StepsRollingChart data={daily} />
-                  <FloorsChart data={daily} />
-                </div>
+                {has('daily_summary', 'resting_hr', 'min_hr_day', 'max_hr_day') && <DailyHRRangeChart data={daily} />}
+                <ChartGrid>
+                  {has('daily_summary', 'resting_hr') && <RollingHRChart data={daily} />}
+                  {has('hrv', 'hrv_last_night', 'hrv_weekly_avg') && <HrvChart data={hrv} />}
+                  {has('daily_summary', 'body_battery_high') && <BodyBatteryChart data={daily} />}
+                  {has('daily_summary', 'body_battery_high') && <BodyBatteryDeltaChart data={daily} />}
+                  {has('daily_summary', 'active_calories', 'total_calories') && <CaloriesChart data={daily} />}
+                  {has('daily_summary', 'active_time_seconds', 'sedentary_seconds') && <ActiveTimeChart data={daily} />}
+                  {has('daily_summary', 'steps') && <StepsRollingChart data={daily} />}
+                  {has('daily_summary', 'floors_ascended') && <FloorsChart data={daily} />}
+                </ChartGrid>
               </>
             )}
 
             {/* ── Sleep ────────────────────────────────────────────────── */}
             {tab === 'Sleep' && (
-              <>
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                  <SleepChart data={sleep} />
-                  <SleepDebtChart data={sleep} />
-                </div>
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                  <SleepRespirationChart data={sleep} />
-                  <SleepScheduleChart data={sleep} />
-                </div>
-              </>
+              <ChartGrid>
+                {has('sleep', 'duration_seconds') && <SleepChart data={sleep} />}
+                {has('sleep', 'duration_seconds') && <SleepDebtChart data={sleep} />}
+                {has('sleep', 'avg_spo2', 'avg_respiration', 'sleep_score') && <SleepRespirationChart data={sleep} />}
+                {has('sleep', 'start_time') && <SleepScheduleChart data={sleep} />}
+              </ChartGrid>
             )}
 
             {/* ── Activity ─────────────────────────────────────────────── */}
             {tab === 'Activity' && (
               <>
-                <ActivityMap
-                  start={start}
-                  end={end}
-                  highlightedId={mapHighlightId}
-                  onRangeChange={(s, e) => { setCustomStart(s); setCustomEnd(e); setRangeLabel(null) }}
-                />
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                  <ActivityPaceChart data={activities} />
+                {hasRoutes && (
+                  <ActivityMap
+                    start={start}
+                    end={end}
+                    highlightedId={mapHighlightId}
+                    onRangeChange={(s, e) => { setCustomStart(s); setCustomEnd(e); setRangeLabel(null) }}
+                  />
+                )}
+                <ChartGrid>
+                  {has('activities', 'avg_pace_sec_per_km') && <ActivityPaceChart data={activities} />}
                   <PersonalBestsTable
                     activities={activities}
                     daily={daily}
                     onSelectActivity={id => { setMapHighlightId(id); setTab('Activity'); window.scrollTo({ top: 0, behavior: 'smooth' }) }}
                   />
-                </div>
-                <CountryStats start={start} end={end} />
-                <TrainingLoadChart data={activities} />
+                </ChartGrid>
+                {has('activities', 'country') && <CountryStats start={start} end={end} />}
+                {has('activities', 'distance_meters') && <TrainingLoadChart data={activities} />}
                 {activities.length > 0 && dataRange.earliest && (
                   <ActivityHeatmap
                     data={activities}
@@ -378,7 +424,7 @@ export default function App() {
             {tab === 'Touring' && (
               <TouringTab start={start} end={end} />
             )}
-          </>
+          </div>
         )}
       </main>
     </div>

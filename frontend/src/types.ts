@@ -242,3 +242,22 @@ export interface Summary {
   }
   activities_30d: number
 }
+
+// ─── Sources (Garmin, Strava, Health Connect — never mixed) ───────────────────
+
+export type SourceId = 'garmin' | 'strava' | 'health_connect'
+
+export interface SourceInfo {
+  source: SourceId
+  connected: boolean
+  status: string | null
+  last_sync_at: string | null
+  has_data: boolean
+  /** table → columns that hold at least one value for this source */
+  available: Record<string, string[]>
+}
+
+export interface SourcesResponse {
+  sources: SourceInfo[]
+  default: SourceId
+}

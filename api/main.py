@@ -270,24 +270,126 @@ def delete_garmin_credentials(user: dict = Depends(require_user)):
         )
 
 
+
+# ─── Sources ──────────────────────────────────────────────────────────────────
+# Data comes from one source at a time: 'garmin', 'strava' or 'health_connect'. The app
+# asks for ?source=<name> on every data route; sources are never merged or mixed.
+
+SOURCES = ("garmin", "strava", "health_connect")
+
+# What each table can hold; /api/sources says which of these a source really has, so the
+# app only offers charts that have data behind them. Nothing is ever computed to fill gaps.
+CAPABILITY_COLUMNS = {
+    "daily_summary": ["steps", "distance_meters", "active_calories", "total_calories", "floors_ascended",
+                      "active_time_seconds", "sedentary_seconds", "stress_avg", "body_battery_high",
+                      "spo2_avg", "resting_hr", "min_hr_day", "max_hr_day"],
+    "sleep": ["duration_seconds", "light_seconds", "deep_seconds", "rem_seconds", "awake_seconds",
+              "sleep_score", "avg_spo2", "avg_respiration", "start_time"],
+    "hrv": ["hrv_last_night", "hrv_weekly_avg"],
+    "activities": ["distance_meters", "avg_hr", "max_hr", "calories", "avg_pace_sec_per_km", "aerobic_te",
+                   "elevation_gain_m", "avg_speed_mps", "avg_cadence", "avg_power", "start_lat", "polyline", "country"],
+}
+
+
+def _capabilities(user_id: str) -> dict:
+    """{source: {table: {column: True}}} — only columns holding at least one value."""
+    caps: dict = {}
+    with db.cursor() as cur:
+        for table, columns in CAPABILITY_COLUMNS.items():
+            flags = ", ".join(f"bool_or({c} IS NOT NULL) AS {c}" for c in columns)
+            cur.execute(f"SELECT source, count(*) AS n, {flags} FROM {table} WHERE user_id = %s GROUP BY source", (user_id,))
+            for row in cur.fetchall():
+                entry = caps.setdefault(row["source"], {}).setdefault(table, {"_rows": row["n"]})
+                for c in columns:
+                    if row[c]:
+                        entry[c] = True
+    return caps
+
+
+def _connections(user_id: str) -> dict:
+    """{source: {status, last_sync_at, ...}} for everything connected."""
+    out: dict = {}
+    with db.cursor() as cur:
+        cur.execute("SELECT garmin_email_enc IS NOT NULL AS connected, garmin_status, last_sync_at FROM users WHERE id = %s", (user_id,))
+        g = cur.fetchone()
+        if g and g["connected"]:
+            out["garmin"] = {"status": g["garmin_status"] or "connected", "last_sync_at": g["last_sync_at"]}
+        cur.execute("SELECT source, status, last_sync_at, display_name FROM source_connections WHERE user_id = %s", (user_id,))
+        for r in cur.fetchall():
+            out[r["source"]] = {"status": r["status"], "last_sync_at": r["last_sync_at"], "name": r["display_name"]}
+    return out
+
+
+@app.get("/api/sources")
+def get_sources(user: dict = Depends(require_user)):
+    """Every source this person is connected to or has data from, with what each one has.
+    The app shows a picker when there is more than one."""
+    caps = _capabilities(user["id"])
+    conns = _connections(user["id"])
+    result = []
+    for source in SOURCES:
+        if source not in caps and source not in conns:
+            continue
+        result.append({
+            "source": source,
+            "connected": source in conns,
+            "status": conns.get(source, {}).get("status"),
+            "last_sync_at": conns.get(source, {}).get("last_sync_at"),
+            "has_data": source in caps,
+            "available": {t: [c for c in v if c != "_rows"] for t, v in caps.get(source, {}).items()},
+        })
+    # default: the source whose data was stored most recently; else anything listed, else Garmin
+    default = None
+    with db.cursor() as cur:
+        cur.execute(
+            """
+            SELECT source FROM (
+                SELECT source, MAX(created_at) AS t FROM activities WHERE user_id = %s GROUP BY source
+                UNION ALL SELECT source, MAX(created_at) FROM daily_summary WHERE user_id = %s GROUP BY source
+            ) x GROUP BY source ORDER BY MAX(t) DESC LIMIT 1
+            """,
+            (user["id"], user["id"]),
+        )
+        row = cur.fetchone()
+        if row:
+            default = row["source"]
+    default = default or (result[0]["source"] if result else "garmin")
+    return {"sources": result, "default": default}
+
+
+def require_source(
+    source: Optional[str] = Query(default=None),
+    user: dict = Depends(require_user),
+) -> dict:
+    """The signed-in person plus which source this request is about (?source=).
+    Without it the person's most recently updated source is used."""
+    if source is None:
+        source = get_sources(user)["default"]
+    if source not in SOURCES:
+        raise HTTPException(status_code=400, detail="unknown_source")
+    return {**user, "source": source}
+
+
 # ─── Data bounds ──────────────────────────────────────────────────────────────
 
 @app.get("/api/range")
-def get_range(user: dict = Depends(require_user)):
+def get_range(user: dict = Depends(require_source)):
     with db.cursor() as cur:
         cur.execute(
             """
             SELECT
                 LEAST(
-                    (SELECT MIN(date) FROM daily_summary WHERE steps IS NOT NULL AND user_id = %s),
-                    (SELECT MIN(date) FROM sleep WHERE duration_seconds IS NOT NULL AND user_id = %s)
+                    (SELECT MIN(date) FROM daily_summary WHERE steps IS NOT NULL AND user_id = %s AND source = %s),
+                    (SELECT MIN(date) FROM sleep WHERE duration_seconds IS NOT NULL AND user_id = %s AND source = %s),
+                    (SELECT MIN(start_time::date) FROM activities WHERE user_id = %s AND source = %s)
                 ) AS earliest,
                 GREATEST(
-                    (SELECT MAX(date) FROM daily_summary WHERE steps IS NOT NULL AND user_id = %s),
-                    (SELECT MAX(date) FROM sleep WHERE duration_seconds IS NOT NULL AND user_id = %s)
+                    (SELECT MAX(date) FROM daily_summary WHERE steps IS NOT NULL AND user_id = %s AND source = %s),
+                    (SELECT MAX(date) FROM sleep WHERE duration_seconds IS NOT NULL AND user_id = %s AND source = %s),
+                    (SELECT MAX(start_time::date) FROM activities WHERE user_id = %s AND source = %s)
                 ) AS latest
             """,
-            (user["id"], user["id"], user["id"], user["id"]),
+            (user["id"], user["source"]) * 6,
         )
         row = cur.fetchone()
     return {"earliest": row["earliest"], "latest": row["latest"]}
@@ -299,7 +401,7 @@ def get_range(user: dict = Depends(require_user)):
 def get_daily(
     start: Optional[date] = Query(default=None),
     end:   Optional[date] = Query(default=None),
-    user:  dict = Depends(require_user),
+    user:  dict = Depends(require_source),
 ):
     if start is None or end is None:
         start, end = default_range()
@@ -315,10 +417,10 @@ def get_daily(
                    spo2_avg, spo2_min, hydration_ml,
                    resting_hr, min_hr_day, max_hr_day
             FROM daily_summary
-            WHERE date BETWEEN %s AND %s AND user_id = %s
+            WHERE date BETWEEN %s AND %s AND user_id = %s AND source = %s
             ORDER BY date ASC
             """,
-            (start, end, user["id"]),
+            (start, end, user["id"], user["source"]),
         )
         return cur.fetchall()
 
@@ -329,7 +431,7 @@ def get_daily(
 def get_sleep(
     start: Optional[date] = Query(default=None),
     end:   Optional[date] = Query(default=None),
-    user:  dict = Depends(require_user),
+    user:  dict = Depends(require_source),
 ):
     if start is None or end is None:
         start, end = default_range()
@@ -340,10 +442,10 @@ def get_sleep(
                    light_seconds, deep_seconds, rem_seconds, awake_seconds,
                    sleep_score, avg_spo2, avg_respiration
             FROM sleep
-            WHERE date BETWEEN %s AND %s AND user_id = %s
+            WHERE date BETWEEN %s AND %s AND user_id = %s AND source = %s
             ORDER BY date ASC
             """,
-            (start, end, user["id"]),
+            (start, end, user["id"], user["source"]),
         )
         return cur.fetchall()
 
@@ -354,7 +456,7 @@ def get_sleep(
 def get_hrv(
     start: Optional[date] = Query(default=None),
     end:   Optional[date] = Query(default=None),
-    user:  dict = Depends(require_user),
+    user:  dict = Depends(require_source),
 ):
     if start is None or end is None:
         start, end = default_range()
@@ -364,10 +466,10 @@ def get_hrv(
             SELECT date, hrv_weekly_avg, hrv_last_night,
                    hrv_last_night_5min, hrv_status
             FROM hrv
-            WHERE date BETWEEN %s AND %s AND user_id = %s
+            WHERE date BETWEEN %s AND %s AND user_id = %s AND source = %s
             ORDER BY date ASC
             """,
-            (start, end, user["id"]),
+            (start, end, user["id"], user["source"]),
         )
         return cur.fetchall()
 
@@ -378,7 +480,7 @@ def get_hrv(
 def get_activities_map(
     start: Optional[date] = Query(default=None),
     end:   Optional[date] = Query(default=None),
-    user:  dict = Depends(require_user),
+    user:  dict = Depends(require_source),
 ):
     if start is None or end is None:
         start, end = default_range()
@@ -390,11 +492,11 @@ def get_activities_map(
                    avg_pace_sec_per_km, elevation_gain_m,
                    start_lat, start_lng, end_lat, end_lng, polyline
             FROM activities
-            WHERE start_time::date BETWEEN %s AND %s AND user_id = %s
+            WHERE start_time::date BETWEEN %s AND %s AND user_id = %s AND source = %s
             ORDER BY start_time DESC
             LIMIT 1000
             """,
-            (start, end, user["id"]),
+            (start, end, user["id"], user["source"]),
         )
         return cur.fetchall()
 
@@ -404,7 +506,7 @@ def get_activities(
     start:         Optional[date] = Query(default=None),
     end:           Optional[date] = Query(default=None),
     activity_type: Optional[str]  = Query(default=None),
-    user:          dict = Depends(require_user),
+    user:          dict = Depends(require_source),
 ):
     if start is None or end is None:
         start, end = default_range()
@@ -417,10 +519,10 @@ def get_activities(
                        calories, avg_pace_sec_per_km, aerobic_te, anaerobic_te,
                        start_lat, start_lng, elevation_gain_m, avg_speed_mps, avg_cadence, avg_power
                 FROM activities
-                WHERE start_time::date BETWEEN %s AND %s AND user_id = %s AND activity_type = %s
+                WHERE start_time::date BETWEEN %s AND %s AND user_id = %s AND source = %s AND activity_type = %s
                 ORDER BY start_time ASC
                 """,
-                (start, end, user["id"], activity_type.upper()),
+                (start, end, user["id"], user["source"], activity_type.upper()),
             )
         else:
             cur.execute(
@@ -430,10 +532,10 @@ def get_activities(
                        calories, avg_pace_sec_per_km, aerobic_te, anaerobic_te,
                        start_lat, start_lng, elevation_gain_m, avg_speed_mps, avg_cadence, avg_power
                 FROM activities
-                WHERE start_time::date BETWEEN %s AND %s AND user_id = %s
+                WHERE start_time::date BETWEEN %s AND %s AND user_id = %s AND source = %s
                 ORDER BY start_time ASC
                 """,
-                (start, end, user["id"]),
+                (start, end, user["id"], user["source"]),
             )
         return cur.fetchall()
 
@@ -444,7 +546,7 @@ def get_activities(
 def get_touring(
     start: Optional[date] = Query(default=None),
     end:   Optional[date] = Query(default=None),
-    user:  dict = Depends(require_user),
+    user:  dict = Depends(require_source),
 ):
     if start is None or end is None:
         start, end = default_range()
@@ -458,22 +560,22 @@ def get_touring(
                    polyline, weather_data, country_crossings, country
             FROM activities
             WHERE start_time::date BETWEEN %s AND %s
-              AND user_id = %s
+              AND user_id = %s AND source = %s
               AND polyline IS NOT NULL
               AND start_lat IS NOT NULL
             ORDER BY start_time ASC
             """,
-            (start, end, user["id"]),
+            (start, end, user["id"], user["source"]),
         )
         activities = cur.fetchall()
         cur.execute(
             """
             SELECT date, start_time, end_time, duration_seconds, sleep_score, avg_spo2
             FROM sleep
-            WHERE date BETWEEN %s AND %s AND user_id = %s
+            WHERE date BETWEEN %s AND %s AND user_id = %s AND source = %s
             ORDER BY date ASC
             """,
-            (start, end, user["id"]),
+            (start, end, user["id"], user["source"]),
         )
         sleep = cur.fetchall()
     return {"activities": activities, "sleep": sleep}
@@ -485,7 +587,7 @@ def get_touring(
 def get_country_stats(
     start: Optional[date] = Query(default=None),
     end:   Optional[date] = Query(default=None),
-    user:  dict = Depends(require_user),
+    user:  dict = Depends(require_source),
 ):
     if start is None or end is None:
         start = date(2000, 1, 1)
@@ -503,12 +605,12 @@ def get_country_stats(
                 ROUND(AVG(avg_hr)::numeric)::int                                          AS avg_hr
             FROM activities
             WHERE start_time::date BETWEEN %s AND %s
-              AND user_id = %s
+              AND user_id = %s AND source = %s
               AND country IS NOT NULL
             GROUP BY country, activity_type
             ORDER BY country, total_km DESC NULLS LAST
             """,
-            (start, end, user["id"]),
+            (start, end, user["id"], user["source"]),
         )
         rows = cur.fetchall()
 
@@ -534,7 +636,7 @@ def get_country_stats(
 # ─── Summary ──────────────────────────────────────────────────────────────────
 
 @app.get("/api/summary")
-def get_summary(user: dict = Depends(require_user)):
+def get_summary(user: dict = Depends(require_source)):
     today = date.today()
     day7  = today - timedelta(days=7)
     day30 = today - timedelta(days=30)
@@ -550,9 +652,9 @@ def get_summary(user: dict = Depends(require_user)):
                 ROUND(AVG(stress_avg))::int        AS avg_stress,
                 ROUND(AVG(spo2_avg)::numeric, 1)::float AS avg_spo2
             FROM daily_summary
-            WHERE date BETWEEN %s AND %s AND user_id = %s
+            WHERE date BETWEEN %s AND %s AND user_id = %s AND source = %s
             """,
-            (day7, today, user["id"]),
+            (day7, today, user["id"], user["source"]),
         )
         daily_7d = cur.fetchone()
 
@@ -564,9 +666,9 @@ def get_summary(user: dict = Depends(require_user)):
                 ROUND(AVG(deep_seconds) / 60.0)::int             AS avg_deep_min,
                 ROUND(AVG(rem_seconds) / 60.0)::int              AS avg_rem_min
             FROM sleep
-            WHERE date BETWEEN %s AND %s AND user_id = %s
+            WHERE date BETWEEN %s AND %s AND user_id = %s AND source = %s
             """,
-            (day7, today, user["id"]),
+            (day7, today, user["id"], user["source"]),
         )
         sleep_7d = cur.fetchone()
 
@@ -576,21 +678,21 @@ def get_summary(user: dict = Depends(require_user)):
                 ROUND(AVG(hrv_last_night))::int AS avg_hrv,
                 ROUND(AVG(hrv_weekly_avg))::int AS avg_hrv_weekly
             FROM hrv
-            WHERE date BETWEEN %s AND %s AND user_id = %s
+            WHERE date BETWEEN %s AND %s AND user_id = %s AND source = %s
             """,
-            (day7, today, user["id"]),
+            (day7, today, user["id"], user["source"]),
         )
         hrv_7d = cur.fetchone()
 
         cur.execute(
-            "SELECT COUNT(*) AS count FROM activities WHERE start_time::date BETWEEN %s AND %s AND user_id = %s",
-            (day7, today, user["id"]),
+            "SELECT COUNT(*) AS count FROM activities WHERE start_time::date BETWEEN %s AND %s AND user_id = %s AND source = %s",
+            (day7, today, user["id"], user["source"]),
         )
         activities_7d = cur.fetchone()
 
         cur.execute(
-            "SELECT COUNT(*) AS count FROM activities WHERE start_time::date BETWEEN %s AND %s AND user_id = %s",
-            (day30, today, user["id"]),
+            "SELECT COUNT(*) AS count FROM activities WHERE start_time::date BETWEEN %s AND %s AND user_id = %s AND source = %s",
+            (day30, today, user["id"], user["source"]),
         )
         activities_30d = cur.fetchone()
 
@@ -619,7 +721,7 @@ class TourUpdate(BaseModel):
 
 
 @app.get("/api/tours")
-def list_tours(user: dict = Depends(require_user)):
+def list_tours(user: dict = Depends(require_source)):
     with db.cursor() as cur:
         cur.execute(
             """
@@ -630,22 +732,22 @@ def list_tours(user: dict = Depends(require_user)):
                    MAX(a.start_time::date)::text AS end_date
             FROM tours t
             LEFT JOIN tour_activities ta ON ta.tour_id = t.id
-            LEFT JOIN activities a ON a.activity_id = ta.activity_id AND a.user_id = t.user_id
-            WHERE t.user_id = %s
+            LEFT JOIN activities a ON a.activity_id = ta.activity_id AND a.user_id = t.user_id AND a.source = t.source
+            WHERE t.user_id = %s AND t.source = %s
             GROUP BY t.id
             ORDER BY t.created_at DESC
             """,
-            (user["id"],),
+            (user["id"], user["source"],),
         )
         return cur.fetchall()
 
 
 @app.post("/api/tours", status_code=201)
-def create_tour(body: TourCreate, user: dict = Depends(require_user)):
+def create_tour(body: TourCreate, user: dict = Depends(require_source)):
     with db.cursor() as cur:
         cur.execute(
-            "INSERT INTO tours (name, description, user_id) VALUES (%s, %s, %s) RETURNING id",
-            (body.name, body.description, user["id"]),
+            "INSERT INTO tours (name, description, user_id, source) VALUES (%s, %s, %s, %s) RETURNING id",
+            (body.name, body.description, user["id"], user["source"]),
         )
         tour_id = cur.fetchone()["id"]
         for aid in body.activity_ids:
@@ -657,11 +759,11 @@ def create_tour(body: TourCreate, user: dict = Depends(require_user)):
 
 
 @app.get("/api/tours/{tour_id}")
-def get_tour(tour_id: int, user: dict = Depends(require_user)):
+def get_tour(tour_id: int, user: dict = Depends(require_source)):
     with db.cursor() as cur:
         cur.execute(
-            "SELECT id, name, description, created_at FROM tours WHERE id = %s AND user_id = %s",
-            (tour_id, user["id"]),
+            "SELECT id, name, description, created_at FROM tours WHERE id = %s AND user_id = %s AND source = %s",
+            (tour_id, user["id"], user["source"]),
         )
         tour = cur.fetchone()
         if not tour:
@@ -676,10 +778,10 @@ def get_tour(tour_id: int, user: dict = Depends(require_user)):
                    a.polyline, a.weather_data, a.country_crossings, a.country
             FROM activities a
             JOIN tour_activities ta ON ta.activity_id = a.activity_id
-            WHERE ta.tour_id = %s AND a.user_id = %s
+            WHERE ta.tour_id = %s AND a.user_id = %s AND a.source = %s
             ORDER BY a.start_time ASC
             """,
-            (tour_id, user["id"]),
+            (tour_id, user["id"], user["source"]),
         )
         activities = cur.fetchall()
 
@@ -688,9 +790,9 @@ def get_tour(tour_id: int, user: dict = Depends(require_user)):
             cur.execute(
                 """
                 SELECT date, start_time, end_time, duration_seconds, sleep_score, avg_spo2
-                FROM sleep WHERE date BETWEEN %s AND %s AND user_id = %s ORDER BY date ASC
+                FROM sleep WHERE date BETWEEN %s AND %s AND user_id = %s AND source = %s ORDER BY date ASC
                 """,
-                (min(dates), max(dates), user["id"]),
+                (min(dates), max(dates), user["id"], user["source"]),
             )
             sleep = cur.fetchall()
         else:
@@ -700,19 +802,19 @@ def get_tour(tour_id: int, user: dict = Depends(require_user)):
 
 
 @app.put("/api/tours/{tour_id}")
-def update_tour(tour_id: int, body: TourUpdate, user: dict = Depends(require_user)):
+def update_tour(tour_id: int, body: TourUpdate, user: dict = Depends(require_source)):
     with db.cursor() as cur:
         cur.execute(
-            "UPDATE tours SET name = %s, description = %s, updated_at = NOW() WHERE id = %s AND user_id = %s",
-            (body.name, body.description, tour_id, user["id"]),
+            "UPDATE tours SET name = %s, description = %s, updated_at = NOW() WHERE id = %s AND user_id = %s AND source = %s",
+            (body.name, body.description, tour_id, user["id"], user["source"]),
         )
     return {"ok": True}
 
 
 @app.delete("/api/tours/{tour_id}", status_code=204)
-def delete_tour(tour_id: int, user: dict = Depends(require_user)):
+def delete_tour(tour_id: int, user: dict = Depends(require_source)):
     with db.cursor() as cur:
-        cur.execute("DELETE FROM tours WHERE id = %s AND user_id = %s", (tour_id, user["id"]))
+        cur.execute("DELETE FROM tours WHERE id = %s AND user_id = %s AND source = %s", (tour_id, user["id"], user["source"]))
 
 
 # ─── Weather ──────────────────────────────────────────────────────────────────
@@ -721,7 +823,7 @@ def delete_tour(tour_id: int, user: dict = Depends(require_user)):
 def get_weather_grid_region(
     min_lat: float, max_lat: float, min_lng: float, max_lng: float,
     start_date: str, end_date: str,
-    user: dict = Depends(require_user),
+    user: dict = Depends(require_source),
 ):
     """Return ERA5 grid points for a bounding box and date range (used by touring)."""
     with db.cursor() as cur:
@@ -739,13 +841,13 @@ def get_weather_grid_region(
 
 
 @app.get("/api/activities/{activity_id}/weather-grid")
-def get_weather_grid(activity_id: int, user: dict = Depends(require_user)):
+def get_weather_grid(activity_id: int, user: dict = Depends(require_source)):
     """Return shared ERA5 grid points covering the activity's bounding box and date."""
     import json as _json
     with db.cursor() as cur:
         cur.execute(
-            "SELECT polyline, start_time::date AS act_date FROM activities WHERE activity_id = %s AND user_id = %s",
-            (activity_id, user["id"]),
+            "SELECT polyline, start_time::date AS act_date FROM activities WHERE activity_id = %s AND user_id = %s AND source = %s",
+            (activity_id, user["id"], user["source"]),
         )
         row = cur.fetchone()
     if not row:
@@ -772,12 +874,12 @@ def get_weather_grid(activity_id: int, user: dict = Depends(require_user)):
 
 
 @app.get("/api/activities/{activity_id}/radar-timestamps")
-def get_radar_timestamps(activity_id: int, user: dict = Depends(require_user)):
+def get_radar_timestamps(activity_id: int, user: dict = Depends(require_source)):
     """Return RainViewer timestamps stored for this activity."""
     with db.cursor() as cur:
         cur.execute(
-            "SELECT radar_timestamps FROM activities WHERE activity_id = %s AND user_id = %s",
-            (activity_id, user["id"]),
+            "SELECT radar_timestamps FROM activities WHERE activity_id = %s AND user_id = %s AND source = %s",
+            (activity_id, user["id"], user["source"]),
         )
         row = cur.fetchone()
     if not row:

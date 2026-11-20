@@ -123,10 +123,10 @@ def main() -> int:
               f"(sign up in any Quarc app, then run the migration again)")
 
     for table, conflict in (
-        ("daily_summary", "(user_id, date)"),
-        ("sleep", "(user_id, date)"),
-        ("hrv", "(user_id, date)"),
-        ("activities", "(user_id, activity_id)"),
+        ("daily_summary", "(user_id, source, date)"),
+        ("sleep", "(user_id, source, date)"),
+        ("hrv", "(user_id, source, date)"),
+        ("activities", "(user_id, source, activity_id)"),
     ):
         print(f"  {table}: {copy_table(old, new, table, user_map, conflict)} rows copied")
 

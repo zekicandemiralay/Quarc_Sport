@@ -154,8 +154,8 @@ def get_latest_synced_date(user_id: str) -> date | None:
         with conn.cursor() as cur:
             cur.execute("""
                 SELECT GREATEST(
-                    (SELECT MAX(date) FROM daily_summary WHERE steps IS NOT NULL AND user_id = %s),
-                    (SELECT MAX(date) FROM sleep WHERE duration_seconds IS NOT NULL AND user_id = %s)
+                    (SELECT MAX(date) FROM daily_summary WHERE steps IS NOT NULL AND user_id = %s AND source = 'garmin'),
+                    (SELECT MAX(date) FROM sleep WHERE duration_seconds IS NOT NULL AND user_id = %s AND source = 'garmin')
                 )
             """, (user_id, user_id))
             row = cur.fetchone()
@@ -170,7 +170,7 @@ def get_earliest_synced_date(user_id: str) -> date | None:
         conn = db.get_conn()
         with conn.cursor() as cur:
             cur.execute(
-                "SELECT MIN(date) FROM daily_summary WHERE steps IS NOT NULL AND user_id = %s",
+                "SELECT MIN(date) FROM daily_summary WHERE steps IS NOT NULL AND user_id = %s AND source = 'garmin'",
                 (user_id,),
             )
             row = cur.fetchone()
@@ -345,7 +345,7 @@ def gps_pending(conn, user_id: str) -> int:
     with conn.cursor() as cur:
         cur.execute(f"""
             SELECT COUNT(*) FROM activities
-            WHERE polyline IS NULL AND start_lat IS NOT NULL AND user_id = %s
+            WHERE polyline IS NULL AND start_lat IS NOT NULL AND user_id = %s AND source = 'garmin'
               AND activity_type IN ({placeholders}) AND NOT (activity_id = ANY(%s::bigint[]))
         """, (user_id, *OUTDOOR_TYPES, list(_no_route)))
         return cur.fetchone()[0]
@@ -357,7 +357,7 @@ def sync_missing_gps(conn, user_id: str, max_fetch: int = GPS_BATCH_SIZE) -> int
     with conn.cursor() as cur:
         cur.execute(f"""
             SELECT activity_id FROM activities
-            WHERE polyline IS NULL AND start_lat IS NOT NULL AND user_id = %s
+            WHERE polyline IS NULL AND start_lat IS NOT NULL AND user_id = %s AND source = 'garmin'
               AND activity_type IN ({placeholders}) AND NOT (activity_id = ANY(%s::bigint[]))
             ORDER BY start_time DESC LIMIT %s
         """, (user_id, *OUTDOOR_TYPES, list(_no_route), max_fetch))
@@ -390,7 +390,7 @@ def sync_missing_coords(conn, user_id: str, chunk_days: int = 30):
         cur.execute(f"""
             SELECT MIN(start_time::date), COUNT(*)
             FROM activities
-            WHERE start_lat IS NULL AND user_id = %s
+            WHERE start_lat IS NULL AND user_id = %s AND source = 'garmin'
               AND activity_type IN ({placeholders})
         """, (user_id, *OUTDOOR_TYPES))
         row = cur.fetchone()
@@ -647,7 +647,7 @@ def load_candidates() -> list[dict]:
                 SELECT id, garmin_email_enc, garmin_pass_enc, sync_requested_at, last_sync_at,
                        synced_until, history_from, history_target,
                        EXISTS (SELECT 1 FROM activities a
-                               WHERE a.user_id = users.id AND a.polyline IS NULL AND a.start_lat IS NOT NULL
+                               WHERE a.user_id = users.id AND a.source = 'garmin' AND a.polyline IS NULL AND a.start_lat IS NOT NULL
                                  AND a.activity_type IN ({','.join(['%s'] * len(OUTDOOR_TYPES))})
                                  AND NOT (a.activity_id = ANY(%s::bigint[])))
                 FROM users

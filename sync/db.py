@@ -53,7 +53,7 @@ def upsert_daily_summary(conn, rows: list[dict], user_id: str):
             spo2_avg, spo2_min, hydration_ml,
             resting_hr, min_hr_day, max_hr_day
         ) VALUES %s
-        ON CONFLICT (user_id, date) DO UPDATE SET
+        ON CONFLICT (user_id, source, date) DO UPDATE SET
             steps               = EXCLUDED.steps,
             step_goal           = EXCLUDED.step_goal,
             distance_meters     = EXCLUDED.distance_meters,
@@ -98,7 +98,7 @@ def upsert_sleep(conn, rows: list[dict], user_id: str):
             light_seconds, deep_seconds, rem_seconds, awake_seconds,
             sleep_score, avg_spo2, avg_respiration
         ) VALUES %s
-        ON CONFLICT (user_id, date) DO UPDATE SET
+        ON CONFLICT (user_id, source, date) DO UPDATE SET
             start_time       = EXCLUDED.start_time,
             end_time         = EXCLUDED.end_time,
             duration_seconds = EXCLUDED.duration_seconds,
@@ -128,7 +128,7 @@ def upsert_hrv(conn, rows: list[dict], user_id: str):
         INSERT INTO hrv (
             user_id, date, hrv_weekly_avg, hrv_last_night, hrv_last_night_5min, hrv_status
         ) VALUES %s
-        ON CONFLICT (user_id, date) DO UPDATE SET
+        ON CONFLICT (user_id, source, date) DO UPDATE SET
             hrv_weekly_avg      = EXCLUDED.hrv_weekly_avg,
             hrv_last_night      = EXCLUDED.hrv_last_night,
             hrv_last_night_5min = EXCLUDED.hrv_last_night_5min,
@@ -154,7 +154,7 @@ def upsert_activities(conn, rows: list[dict], user_id: str):
             start_lat, start_lng, end_lat, end_lng,
             elevation_gain_m, avg_speed_mps, avg_cadence, avg_power
         ) VALUES %s
-        ON CONFLICT (user_id, activity_id) DO UPDATE SET
+        ON CONFLICT (user_id, source, activity_id) DO UPDATE SET
             start_lat        = EXCLUDED.start_lat,
             start_lng        = EXCLUDED.start_lng,
             end_lat          = EXCLUDED.end_lat,
@@ -181,7 +181,7 @@ def upsert_activities(conn, rows: list[dict], user_id: str):
 def upsert_activity_gps(conn, activity_id: int, polyline: list | None, user_id: str):
     with conn.cursor() as cur:
         cur.execute(
-            "UPDATE activities SET polyline = %s WHERE activity_id = %s AND user_id = %s",
+            "UPDATE activities SET polyline = %s WHERE activity_id = %s AND user_id = %s AND source = 'garmin'",
             (json.dumps(polyline) if polyline else None, activity_id, user_id),
         )
     conn.commit()

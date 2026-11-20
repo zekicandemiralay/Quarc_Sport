@@ -42,6 +42,7 @@ WHERE garmin_status IS NULL AND garmin_email_enc IS NOT NULL;
 -- Daily summary: steps, calories, stress, body battery, SpO2, hydration
 CREATE TABLE IF NOT EXISTS daily_summary (
     user_id             TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE ON UPDATE CASCADE,
+    source              TEXT NOT NULL DEFAULT 'garmin',
     date                DATE NOT NULL,
     steps               INT,
     step_goal           INT,
@@ -63,12 +64,13 @@ CREATE TABLE IF NOT EXISTS daily_summary (
     min_hr_day          INT,
     max_hr_day          INT,
     created_at          TIMESTAMPTZ DEFAULT NOW(),
-    PRIMARY KEY (user_id, date)
+    PRIMARY KEY (user_id, source, date)
 );
 
 -- Sleep: duration, stages, sleep score
 CREATE TABLE IF NOT EXISTS sleep (
     user_id          TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE ON UPDATE CASCADE,
+    source              TEXT NOT NULL DEFAULT 'garmin',
     date             DATE NOT NULL,
     start_time       TIMESTAMPTZ,
     end_time         TIMESTAMPTZ,
@@ -81,24 +83,26 @@ CREATE TABLE IF NOT EXISTS sleep (
     avg_spo2         FLOAT,
     avg_respiration  FLOAT,
     created_at       TIMESTAMPTZ DEFAULT NOW(),
-    PRIMARY KEY (user_id, date)
+    PRIMARY KEY (user_id, source, date)
 );
 
 -- HRV
 CREATE TABLE IF NOT EXISTS hrv (
     user_id             TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE ON UPDATE CASCADE,
+    source              TEXT NOT NULL DEFAULT 'garmin',
     date                DATE NOT NULL,
     hrv_weekly_avg      INT,
     hrv_last_night      INT,
     hrv_last_night_5min INT,
     hrv_status          VARCHAR(20),
     created_at          TIMESTAMPTZ DEFAULT NOW(),
-    PRIMARY KEY (user_id, date)
+    PRIMARY KEY (user_id, source, date)
 );
 
 -- Activities / workouts
 CREATE TABLE IF NOT EXISTS activities (
     user_id              TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE ON UPDATE CASCADE,
+    source              TEXT NOT NULL DEFAULT 'garmin',
     activity_id          BIGINT NOT NULL,
     start_time           TIMESTAMPTZ,
     activity_type        VARCHAR(50),
@@ -126,13 +130,14 @@ CREATE TABLE IF NOT EXISTS activities (
     weather_grid_fetched BOOLEAN DEFAULT FALSE,
     radar_timestamps     BIGINT[],
     created_at           TIMESTAMPTZ DEFAULT NOW(),
-    PRIMARY KEY (user_id, activity_id)
+    PRIMARY KEY (user_id, source, activity_id)
 );
 
 -- Tours (named trip groups)
 CREATE TABLE IF NOT EXISTS tours (
     id          SERIAL PRIMARY KEY,
     user_id     TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE ON UPDATE CASCADE,
+    source      TEXT NOT NULL DEFAULT 'garmin',
     name        TEXT NOT NULL,
     description TEXT,
     created_at  TIMESTAMPTZ DEFAULT NOW(),
@@ -143,6 +148,55 @@ CREATE TABLE IF NOT EXISTS tour_activities (
     tour_id     INT REFERENCES tours(id) ON DELETE CASCADE,
     activity_id BIGINT,
     PRIMARY KEY (tour_id, activity_id)
+);
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- Sources. Every data row says where it came from: 'garmin' (Garmin Connect),
+-- 'strava', 'health_connect' (the Android phone). Sources are never merged — the
+-- app shows one at a time, and the person picks.
+-- Databases created before this: every existing row is Garmin's, and the keys now
+-- include the source so two sources can hold the same day.
+-- ─────────────────────────────────────────────────────────────────────────────
+DO $$
+DECLARE t TEXT;
+BEGIN
+  FOREACH t IN ARRAY ARRAY['daily_summary', 'sleep', 'hrv', 'activities'] LOOP
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns
+                   WHERE table_schema = 'public' AND table_name = t AND column_name = 'source') THEN
+      EXECUTE format('ALTER TABLE %I ADD COLUMN source TEXT NOT NULL DEFAULT %L', t, 'garmin');
+      EXECUTE format('ALTER TABLE %I DROP CONSTRAINT %I', t, t || '_pkey');
+      EXECUTE format('ALTER TABLE %I ADD PRIMARY KEY (%s)', t,
+                     CASE WHEN t = 'activities' THEN 'user_id, source, activity_id' ELSE 'user_id, source, date' END);
+    END IF;
+  END LOOP;
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns
+                 WHERE table_schema = 'public' AND table_name = 'tours' AND column_name = 'source') THEN
+    ALTER TABLE tours ADD COLUMN source TEXT NOT NULL DEFAULT 'garmin';
+  END IF;
+END $$;
+
+-- Connections to sources other than Garmin (Garmin keeps its columns on `users`).
+--   strava:         credentials_enc = Fernet-encrypted JSON {access_token, refresh_token, expires_at}
+--   health_connect: no credentials; the Android app uploads, last_sync_at = last upload
+--   status: connected | auth_failed (access revoked / login no longer accepted) | error (temporary)
+CREATE TABLE IF NOT EXISTS source_connections (
+    user_id           TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE ON UPDATE CASCADE,
+    source            TEXT NOT NULL,
+    status            TEXT NOT NULL DEFAULT 'connected',
+    error             TEXT,
+    credentials_enc   BYTEA,
+    external_id       TEXT,                 -- Strava athlete id
+    display_name      TEXT,                 -- Strava athlete name
+    sync_requested_at TIMESTAMPTZ,          -- "sync me now"
+    syncing_since     TIMESTAMPTZ,          -- set while the sync service works on them
+    last_sync_at      TIMESTAMPTZ,
+    retry_after       TIMESTAMPTZ,          -- backing off after an error / rate limit
+    newest_at         TIMESTAMPTZ,          -- Strava: start of the newest activity stored (incremental sync)
+    history_before    TIMESTAMPTZ,          -- Strava: the first import has covered everything newer than this
+    history_done      BOOLEAN NOT NULL DEFAULT FALSE,
+    items_synced      INT NOT NULL DEFAULT 0,
+    created_at        TIMESTAMPTZ DEFAULT NOW(),
+    PRIMARY KEY (user_id, source)
 );
 
 -- ERA5 weather grid — shared across users, keyed by rounded lat/lng + date + hour
@@ -171,7 +225,7 @@ CREATE TABLE IF NOT EXISTS weather_radar_tiles (
 );
 
 -- Indexes
-CREATE INDEX IF NOT EXISTS idx_activities_user_start ON activities(user_id, start_time);
+CREATE INDEX IF NOT EXISTS idx_activities_user_start ON activities(user_id, source, start_time);
 CREATE INDEX IF NOT EXISTS idx_daily_user_date       ON daily_summary(user_id, date);
 CREATE INDEX IF NOT EXISTS idx_sleep_user_date       ON sleep(user_id, date);
 CREATE INDEX IF NOT EXISTS idx_tours_user            ON tours(user_id);

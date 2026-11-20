@@ -1,11 +1,22 @@
-import type { DailyRow, SleepRow, HrvRow, Activity, MapActivity, Summary, DataRange, CountryStat, TouringData, TourSummary, TourDetail, User, GarminStatus, GarminConnectResult } from './types'
+import type { DailyRow, SleepRow, HrvRow, Activity, MapActivity, Summary, DataRange, CountryStat, TouringData, TourSummary, TourDetail, User, GarminStatus, GarminConnectResult, SourcesResponse } from './types'
 import { apiUrl } from './lib/apiUrl'
 import { useAuthStore } from './store/authStore'
+import { useSourceStore } from './store/sourceStore'
 
 // Login is a cookie issued by the shared quarc-auth service (see store/authStore.ts),
 // so every request just has to send cookies along.
 
 // ─── Fetch helpers ────────────────────────────────────────────────────────────
+
+// Data routes are asked for ONE source (the one picked in the header); these aren't about data.
+const NOT_SOURCE_ROUTES = ['/api/me', '/api/auth', '/api/garmin', '/api/strava', '/api/health-connect', '/api/sources', '/api/radar']
+
+function withSource(path: string): string {
+  if (!path.startsWith('/api/') || NOT_SOURCE_ROUTES.some(p => path.startsWith(p))) return path
+  const source = useSourceStore.getState().current
+  if (!source) return path
+  return `${path}${path.includes('?') ? '&' : '?'}source=${source}`
+}
 
 /** A 401 means the session is gone (expired or revoked elsewhere): go back to the login screen. */
 function checkStatus(res: Response): void {
@@ -18,14 +29,14 @@ async function errorMessage(res: Response): Promise<string> {
 }
 
 async function get<T>(path: string): Promise<T> {
-  const res = await fetch(apiUrl(path), { credentials: 'include' })
+  const res = await fetch(apiUrl(withSource(path)), { credentials: 'include' })
   checkStatus(res)
   if (!res.ok) throw new Error(await errorMessage(res))
   return res.json()
 }
 
 async function send<T>(method: 'POST' | 'PUT', path: string, body: unknown): Promise<T> {
-  const res = await fetch(apiUrl(path), {
+  const res = await fetch(apiUrl(withSource(path)), {
     method,
     credentials: 'include',
     headers: { 'Content-Type': 'application/json' },
@@ -40,9 +51,15 @@ const post = <T,>(path: string, body: unknown) => send<T>('POST', path, body)
 const put = <T,>(path: string, body: unknown) => send<T>('PUT', path, body)
 
 async function del(path: string): Promise<void> {
-  const res = await fetch(apiUrl(path), { method: 'DELETE', credentials: 'include' })
+  const res = await fetch(apiUrl(withSource(path)), { method: 'DELETE', credentials: 'include' })
   checkStatus(res)
   if (!res.ok) throw new Error(await errorMessage(res))
+}
+
+// ─── Sources ──────────────────────────────────────────────────────────────────
+
+export function fetchSources(): Promise<SourcesResponse> {
+  return get('/api/sources')
 }
 
 // ─── Me + Garmin connection ───────────────────────────────────────────────────

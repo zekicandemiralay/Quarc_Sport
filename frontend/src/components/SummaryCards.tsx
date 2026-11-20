@@ -43,45 +43,34 @@ export default function SummaryCards({ summary }: Props) {
   const d = summary.period_7d.daily
   const s = summary.period_7d.sleep
 
+  // Only cards with a value: a source that doesn't report stress simply has no stress card.
+  const cards: (CardProps & { key: string })[] = [
+    { key: 'steps', label: t('summary.avgSteps'), value: d.avg_steps?.toLocaleString() ?? null, sub: t('summary.avg7'), color: 'text-blue-400' },
+    { key: 'hr', label: t('summary.restingHr'), value: d.avg_resting_hr, unit: t('summary.bpm'), color: 'text-rose-400' },
+    {
+      key: 'bb', label: t('summary.bodyBattery'),
+      value: d.avg_bb_high != null ? `${d.avg_bb_low}–${d.avg_bb_high}` : null,
+      color: bbColor(d.avg_bb_high), sub: t('summary.lowHigh'),
+    },
+    {
+      key: 'stress', label: t('summary.stress'), value: d.avg_stress, unit: '/100',
+      color: d.avg_stress != null && d.avg_stress < 30 ? 'text-green-400' : 'text-yellow-400',
+    },
+    {
+      key: 'sleep', label: t('summary.sleepScore'), value: s.avg_sleep_score, unit: '/100', color: scoreColor(s.avg_sleep_score),
+      sub: s.avg_sleep_hours != null ? t('summary.sleepAvg', { hours: s.avg_sleep_hours }) : undefined,
+    },
+    {
+      key: 'spo2', label: t('summary.spo2'), value: d.avg_spo2, unit: '%',
+      color: d.avg_spo2 != null && d.avg_spo2 >= 95 ? 'text-green-400' : 'text-yellow-400',
+    },
+    { key: 'acts', label: t('summary.activities7d'), value: summary.period_7d.activities > 0 ? summary.period_7d.activities : null, color: 'text-emerald-400' },
+  ].filter(c => c.value != null)
+
+  if (cards.length === 0) return null
   return (
     <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-      <Card
-        label={t('summary.avgSteps')}
-        value={d.avg_steps?.toLocaleString() ?? null}
-        sub={t('summary.avg7')}
-        color="text-blue-400"
-      />
-      <Card
-        label={t('summary.restingHr')}
-        value={d.avg_resting_hr}
-        unit={t('summary.bpm')}
-        color="text-rose-400"
-      />
-      <Card
-        label={t('summary.bodyBattery')}
-        value={d.avg_bb_high != null ? `${d.avg_bb_low}–${d.avg_bb_high}` : null}
-        color={bbColor(d.avg_bb_high)}
-        sub={t('summary.lowHigh')}
-      />
-      <Card
-        label={t('summary.stress')}
-        value={d.avg_stress}
-        unit="/100"
-        color={d.avg_stress != null && d.avg_stress < 30 ? 'text-green-400' : 'text-yellow-400'}
-      />
-      <Card
-        label={t('summary.sleepScore')}
-        value={s.avg_sleep_score}
-        unit="/100"
-        color={scoreColor(s.avg_sleep_score)}
-        sub={s.avg_sleep_hours != null ? t('summary.sleepAvg', { hours: s.avg_sleep_hours }) : undefined}
-      />
-      <Card
-        label={t('summary.spo2')}
-        value={d.avg_spo2}
-        unit="%"
-        color={d.avg_spo2 != null && d.avg_spo2 >= 95 ? 'text-green-400' : 'text-yellow-400'}
-      />
+      {cards.map(({ key, ...card }) => <Card key={key} {...card} />)}
     </div>
   )
 }

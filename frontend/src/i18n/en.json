@@ -262,7 +262,8 @@
     "sleepScore": "Sleep Score",
     "sleepAvg": "{{hours}}h avg",
     "spo2": "SpO2",
-    "bpm": "bpm"
+    "bpm": "bpm",
+    "activities7d": "Activities (7d)"
   },
   "activities": {
     "title": "Activities",
@@ -483,5 +484,16 @@
     "noToursHint": "Pick a date range, click New Tour, and select your activities",
     "actsShort": "{{count}} acts",
     "browse": "Browse: {{start}} – {{end}}"
+  },
+  "sources": {
+    "picker": "Data source",
+    "garmin": "Garmin",
+    "strava": "Strava",
+    "health_connect": "Phone (Health Connect)",
+    "empty": "No data from {{source}} yet.",
+    "emptyHint": "It shows up here as soon as it has synced.",
+    "connectNone": "Connect Garmin, Strava or your phone's Health Connect to see your data.",
+    "connectButton": "Connect a source",
+    "onlyOne": "Each source is shown on its own — they are never mixed."
   }
 }
