@@ -319,7 +319,8 @@ def _connections(user_id: str) -> dict:
         g = cur.fetchone()
         if g and g["connected"]:
             out["garmin"] = {"status": g["garmin_status"] or "connected", "last_sync_at": g["last_sync_at"]}
-        cur.execute("SELECT source, status, last_sync_at, display_name FROM source_connections WHERE user_id = %s", (user_id,))
+        cur.execute("SELECT source, status, last_sync_at, display_name FROM source_connections "
+                    "WHERE user_id = %s AND (source <> 'strava' OR credentials_enc IS NOT NULL)", (user_id,))
         for r in cur.fetchall():
             out[r["source"]] = {"status": r["status"], "last_sync_at": r["last_sync_at"], "name": r["display_name"]}
     return out

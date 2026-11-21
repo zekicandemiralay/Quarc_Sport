@@ -93,18 +93,19 @@ def fake(monkeypatch):
     f = FakeStrava()
     monkeypatch.setattr(strava, "API_BASE", f.base + "/api/v3")
     monkeypatch.setattr(strava, "OAUTH_BASE", f.base + "/oauth")
-    monkeypatch.setenv("STRAVA_CLIENT_ID", "cid")
-    monkeypatch.setenv("STRAVA_CLIENT_SECRET", "secret")
     yield f
     f.close()
 
 
-def connect(uid="u1", *, expires_in=3600, access="access-1", refresh="refresh-1", **cols):
+MY_APP = {"client_id": "424242", "client_secret": "s" * 40}
+
+
+def connect(uid="u1", *, expires_in=3600, access="access-1", refresh="refresh-1", app=MY_APP, **cols):
     sync._execute("INSERT INTO users (id, username) VALUES (%s, %s) ON CONFLICT DO NOTHING", (uid, uid))
     creds = strava.dump_credentials({"access_token": access, "refresh_token": refresh, "expires_at": int(time.time()) + expires_in})
     sync._execute(
-        "INSERT INTO source_connections (user_id, source, status, credentials_enc, sync_requested_at) "
-        "VALUES (%s, 'strava', 'connected', %s, now())", (uid, creds))
+        "INSERT INTO source_connections (user_id, source, status, credentials_enc, app_credentials_enc, sync_requested_at) "
+        "VALUES (%s, 'strava', 'connected', %s, %s, now())", (uid, creds, strava.dump_credentials(app) if app else None))
     for k, v in cols.items():
         sync._execute(f"UPDATE source_connections SET {k} = %s WHERE user_id = %s AND source = 'strava'", (v, uid))
 
@@ -192,6 +193,8 @@ def test_expired_token_is_refreshed_and_the_new_one_is_kept(pg, fake):
     connect(expires_in=-10)                                        # already expired
     run_next()
     assert len(fake.calls("/oauth/token")) == 1
+    refresh_form = fake.calls("/oauth/token")[0]["form"]
+    assert (refresh_form["client_id"], refresh_form["client_secret"]) == (MY_APP["client_id"], MY_APP["client_secret"])   # the person's OWN app
     assert fake.calls("/api/v3/athlete/activities")[0]["auth"] == f"Bearer {fake.access_token}"
     creds = strava.load_credentials(conn_row()["creds"])
     assert creds["refresh_token"] == fake.refresh_token != "refresh-1"      # the rotated refresh token is saved
@@ -205,6 +208,26 @@ def test_revoked_access_needs_a_reconnect_and_is_not_retried(pg, fake):
     r = conn_row()
     assert r["status"] == "auth_failed" and r["error"]
     assert strava.load_candidates() == []                           # left alone until the person reconnects
+
+
+def test_two_people_refresh_with_their_own_apps(pg, fake):
+    fake.activities = [activity(1)]
+    connect("u1", expires_in=-10, app={"client_id": "111111", "client_secret": "x" * 40})
+    run_next()
+    sync._execute("UPDATE source_connections SET sync_requested_at = now() WHERE user_id = 'u1'")
+    fake.refresh_token = "refresh-2"
+    connect("u2", expires_in=-10, refresh="refresh-2", app={"client_id": "222222", "client_secret": "y" * 40})
+    run_next(); run_next()
+    ids = [c["form"]["client_id"] for c in fake.calls("/oauth/token")]
+    assert sorted(set(ids)) == ["111111", "222222"]
+
+
+def test_a_missing_app_needs_a_reconnect_instead_of_crashing(pg, fake):
+    connect(expires_in=-10, app=None)                                  # tokens expired and no app to refresh them with
+    run_next()
+    r = conn_row()
+    assert r["status"] == "auth_failed" and "app" in r["error"].lower()
+    assert fake.calls("/oauth/token") == []
 
 
 def test_refused_refresh_also_needs_a_reconnect(pg, fake):

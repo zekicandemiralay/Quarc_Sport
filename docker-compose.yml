@@ -32,9 +32,6 @@ services:
       - SYNC_INTERVAL_SECONDS=${SYNC_INTERVAL_SECONDS:-3600}
       # Polylines fetched per sync cycle — raise to 200 for faster catch-up.
       - GPS_BATCH_SIZE=${GPS_BATCH_SIZE:-50}
-      # Strava (optional): this server's Strava API application, see .env.example
-      - STRAVA_CLIENT_ID=${STRAVA_CLIENT_ID:-}
-      - STRAVA_CLIENT_SECRET=${STRAVA_CLIENT_SECRET:-}
     volumes:
       - ./db/init.sql:/app/init.sql:ro
       # Garmin OAuth tokens, one folder per Quarc user id (see garmin-login.sh).
@@ -61,10 +58,8 @@ services:
       # sameSite/secure would stop reaching the server from a cross-origin client
       # (e.g. the Android app's WebView) that the original cookie reached fine.
       - SECURE_COOKIE=${SECURE_COOKIE:-true}
-      # Strava sign-in: this server's Strava API application and its public address
-      # (Strava sends the person's browser back to ${PUBLIC_URL}/api/strava/callback).
-      - STRAVA_CLIENT_ID=${STRAVA_CLIENT_ID:-}
-      - STRAVA_CLIENT_SECRET=${STRAVA_CLIENT_SECRET:-}
+      # Strava: everyone connects with their OWN Strava app (entered in Settings). Strava sends the
+      # person's browser back to ${PUBLIC_URL}/api/strava/callback, so the server must know its address.
       - PUBLIC_URL=${PUBLIC_URL:-https://quarcnet0.tail84500c.ts.net:4007}
     volumes:
       - ./db/init.sql:/app/init.sql:ro

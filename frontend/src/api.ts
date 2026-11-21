@@ -68,6 +68,11 @@ export function fetchStravaStatus(): Promise<StravaStatus> {
   return get('/api/strava/status')
 }
 
+/** Saves the Client ID and Secret of the person's OWN Strava app (the server keeps them encrypted). */
+export function saveStravaApp(client_id: string, client_secret: string): Promise<{ ok: boolean }> {
+  return put('/api/strava/app', { client_id, client_secret })
+}
+
 /** Strava's "allow access" address for this person (open it outside the app). */
 export function authorizeStrava(): Promise<{ url: string }> {
   return post('/api/strava/authorize', {})

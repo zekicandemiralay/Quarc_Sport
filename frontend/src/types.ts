@@ -263,9 +263,16 @@ export interface SourcesResponse {
 }
 
 export interface StravaStatus {
+  /** the server knows its own address (Strava's redirect needs it) */
   configured: boolean
+  /** what the person types into Strava's form when creating their own app */
+  website: string
+  callback_domain: string
+  /** the person has saved their own Strava app's Client ID + Secret (the secret is never sent back) */
+  app_saved: boolean
+  client_id: string | null
   connected: boolean
-  /** not_connected | connected | auth_failed | error */
+  /** not_connected | pending (app saved, access not allowed yet) | connected | auth_failed | error */
   status: string
   error: string | null
   athlete: string | null

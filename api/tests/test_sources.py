@@ -109,9 +109,17 @@ def test_sources_lists_only_what_has_data_or_a_connection(alice):
 
 def test_connected_source_without_data_is_listed(alice):
     with db.cursor() as cur:
-        cur.execute("INSERT INTO source_connections (user_id, source, status) VALUES (%s, 'strava', 'connected')", (ALICE,))
+        cur.execute("INSERT INTO source_connections (user_id, source, status, credentials_enc) VALUES (%s, 'strava', 'connected', %s)",
+                    (ALICE, psycopg2.Binary(b"tokens")))
     s = alice.get("/api/sources").json()["sources"]
     assert [(x["source"], x["connected"], x["has_data"]) for x in s] == [("strava", True, False)]
+
+
+def test_a_strava_app_without_access_is_not_a_source_yet(alice):
+    with db.cursor() as cur:
+        cur.execute("INSERT INTO source_connections (user_id, source, status, app_credentials_enc) VALUES (%s, 'strava', 'pending', %s)",
+                    (ALICE, psycopg2.Binary(b"app")))
+    assert alice.get("/api/sources").json()["sources"] == []
 
 
 def test_default_source_is_the_one_updated_last(alice):

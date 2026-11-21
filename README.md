@@ -67,19 +67,22 @@ password, **Connect Garmin**.
 `bash garmin-login.sh <Quarc username>` still exists as an admin fallback (a terminal sign-in with the code), but isn't
 needed normally.
 
-### Strava (optional)
+### Strava
 People can also connect **Strava**. Strava only has activities (no sleep, steps or daily health data), so that is all its view
-shows. One Strava API application serves the whole server:
+shows. **Everyone connects with their own Strava app** — Strava's official way in, with no passwords involved — so nobody depends
+on the server owner's app or on Strava's athlete limit for shared apps. Nothing to set up on the server except that `PUBLIC_URL`
+in `.env` is the address people use to reach it (Strava sends their browser back there).
 
-1. At <https://www.strava.com/settings/api> create an application. Set **Authorization Callback Domain** to this server's host
-   name (`quarcnet0.tail84500c.ts.net`), and upload any icon.
-2. Put the *Client ID* and *Client Secret* in `.env` as `STRAVA_CLIENT_ID` / `STRAVA_CLIENT_SECRET` (and check `PUBLIC_URL`), then
-   `bash deploy.sh`.
-3. A new Strava application can connect **one** athlete (you) until you raise its capacity to **10** on that same page; more than 10
-   needs Strava's own review, which can take weeks and isn't guaranteed.
-4. Each person then opens **Settings → Strava → Connect Strava**, allows access on Strava's page and is sent back. Their
-   history is imported newest first, then kept up to date every 30 minutes. Disconnecting deletes the Strava activities stored
-   here (Strava's API terms ask for that); the person's Strava account is untouched.
+Each person, once (about 5 minutes), in **Settings → Strava**, which walks them through it with copy buttons:
+1. Open `strava.com/settings/api` and create an app. Strava currently asks for a **Strava subscription** to create one. Website =
+   the server address, Authorization Callback Domain = the server's host name (`quarcnet0.tail84500c.ts.net`); the rest can be anything.
+2. Paste the app's *Client ID* and *Client Secret* into Quarc Sport and press **Save and connect**.
+3. Strava's own page opens: allow access. They are sent back, and their history is imported newest first, then kept up to date every
+   30 minutes.
+
+The Client Secret is stored encrypted (with `CREDENTIALS_KEY`, like the Garmin login) and is never sent back to the browser. A new
+Strava app can only be authorised by its owner, which is all a personal app needs. Disconnecting deletes the person's Strava
+activities and saved app details from the server (Strava's API terms ask for that); their Strava account and app are untouched.
 
 ### Phone (Android Health Connect)
 Health Connect keeps the data your phone and watch collect (steps, sleep, workouts, heart rate) and has **no cloud API**, so only the

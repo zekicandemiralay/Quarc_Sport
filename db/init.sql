@@ -178,13 +178,15 @@ END $$;
 -- Connections to sources other than Garmin (Garmin keeps its columns on `users`).
 --   strava:         credentials_enc = Fernet-encrypted JSON {access_token, refresh_token, expires_at}
 --   health_connect: no credentials; the Android app uploads, last_sync_at = last upload
---   status: connected | auth_failed (access revoked / login no longer accepted) | error (temporary)
+--   status: pending (Strava app saved, access not allowed yet) | connected | auth_failed (access revoked /
+--   login no longer accepted) | error (temporary)
 CREATE TABLE IF NOT EXISTS source_connections (
     user_id           TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE ON UPDATE CASCADE,
     source            TEXT NOT NULL,
     status            TEXT NOT NULL DEFAULT 'connected',
     error             TEXT,
-    credentials_enc   BYTEA,
+    credentials_enc   BYTEA,                -- strava: encrypted tokens (none until the person has allowed access)
+    app_credentials_enc BYTEA,              -- strava: encrypted {client_id, client_secret} of the person's OWN Strava app
     external_id       TEXT,                 -- Strava athlete id
     display_name      TEXT,                 -- Strava athlete name
     sync_requested_at TIMESTAMPTZ,          -- "sync me now"
@@ -201,6 +203,7 @@ CREATE TABLE IF NOT EXISTS source_connections (
 
 -- (added after the table first shipped, so it also has to be an ALTER)
 ALTER TABLE source_connections ADD COLUMN IF NOT EXISTS history_page INT NOT NULL DEFAULT 1;
+ALTER TABLE source_connections ADD COLUMN IF NOT EXISTS app_credentials_enc BYTEA;
 ALTER TABLE source_connections ADD COLUMN IF NOT EXISTS history_before TIMESTAMPTZ;
 
 -- ERA5 weather grid — shared across users, keyed by rounded lat/lng + date + hour

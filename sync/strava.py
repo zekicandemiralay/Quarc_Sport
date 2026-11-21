@@ -66,14 +66,15 @@ def dump_credentials(creds: dict) -> bytes:
     return _fernet().encrypt(json.dumps(creds).encode())
 
 
-def refresh_tokens(creds: dict) -> dict:
-    """Strava access tokens last 6 hours; the refresh token is rotated every time."""
+def refresh_tokens(creds: dict, app: dict) -> dict:
+    """Strava access tokens last 6 hours; the refresh token is rotated every time.
+    `app` is the person's own Strava app: {client_id, client_secret}."""
     try:
         r = requests.post(
             f"{OAUTH_BASE}/token",
             data={
-                "client_id": os.environ["STRAVA_CLIENT_ID"],
-                "client_secret": os.environ["STRAVA_CLIENT_SECRET"],
+                "client_id": app["client_id"],
+                "client_secret": app["client_secret"],
                 "grant_type": "refresh_token",
                 "refresh_token": creds["refresh_token"],
             },
@@ -306,7 +307,7 @@ def load_candidates() -> list[dict]:
         with conn.cursor() as cur:
             cur.execute(
                 """
-                SELECT user_id, credentials_enc, sync_requested_at, last_sync_at, history_done, history_before, history_page
+                SELECT user_id, credentials_enc, app_credentials_enc, sync_requested_at, last_sync_at, history_done, history_before, history_page
                 FROM source_connections
                 WHERE source = 'strava' AND credentials_enc IS NOT NULL
                   AND status IN ('connected', 'error')
@@ -316,7 +317,7 @@ def load_candidates() -> list[dict]:
             rows = cur.fetchall()
     finally:
         conn.close()
-    keys = ("user_id", "credentials_enc", "sync_requested_at", "last_sync_at", "history_done", "history_before", "history_page")
+    keys = ("user_id", "credentials_enc", "app_credentials_enc", "sync_requested_at", "last_sync_at", "history_done", "history_before", "history_page")
     return [dict(zip(keys, r)) for r in rows]
 
 
@@ -353,7 +354,9 @@ def run_job(candidate: dict, enrich=None) -> None:
     try:
         creds = load_credentials(candidate["credentials_enc"])
         if creds["expires_at"] - time.time() < 300:
-            creds = refresh_tokens(creds)
+            if not candidate.get("app_credentials_enc"):
+                raise StravaAuthError("the Strava app credentials are missing — enter them again")
+            creds = refresh_tokens(creds, load_credentials(candidate["app_credentials_enc"]))
             _update(uid, credentials_enc=dump_credentials(creds))
         api = Api(creds["access_token"])
         conn = db.get_conn()

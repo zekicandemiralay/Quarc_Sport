@@ -1,23 +1,28 @@
 """
-Strava connection: sign in with Strava (OAuth), status, sync now, disconnect.
+Strava connection: everyone brings their OWN Strava API application.
 
-Strava is one of the app's sources: its activities are stored with source = 'strava' by the sync
-service (sync/strava.py) and shown on their own, never mixed with Garmin or the phone.
+Strava's API is official and free of passwords, but every app needs a registration at
+strava.com/settings/api (Strava currently asks for a Strava subscription to create one). A new
+Strava app only lets its owner connect — which is exactly what a personal app needs, so nobody
+depends on the server owner's app or on Strava's 10-person limit for shared apps.
 
-This server owns ONE Strava API application (STRAVA_CLIENT_ID / STRAVA_CLIENT_SECRET, created at
-strava.com/settings/api with the authorization callback domain set to this server's host name).
-Every person connects their own Strava account to it. Tokens are stored encrypted, like Garmin's login.
+Per person: they register an app, paste its Client ID and Client Secret into Settings (stored
+encrypted, like Garmin's login), then sign in on Strava's own page and allow access. Their
+activities are stored with source = 'strava' by the sync service (sync/strava.py) and are never
+mixed with Garmin or the phone.
 """
 
 import json
 import os
+import re
 import time
-from urllib.parse import urlencode
+from urllib.parse import urlencode, urlparse
 
 import jwt
 import requests
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import HTMLResponse
+from pydantic import BaseModel
 
 import auth
 import db
@@ -31,17 +36,30 @@ STATE_MINUTES = 10
 HTTP_TIMEOUT = 30
 
 
-def _client() -> tuple[str, str] | None:
-    cid, secret = os.getenv("STRAVA_CLIENT_ID", ""), os.getenv("STRAVA_CLIENT_SECRET", "")
-    return (cid, secret) if cid and secret else None
-
-
 def _public_url() -> str:
     return os.getenv("PUBLIC_URL", "").rstrip("/")
 
 
 def _redirect_uri() -> str:
     return f"{_public_url()}/api/strava/callback"
+
+
+def _callback_domain() -> str:
+    """What the person types into Strava's "Authorization Callback Domain": the host name only."""
+    return urlparse(_public_url()).hostname or ""
+
+
+def _app_credentials(user_id: str) -> dict | None:
+    """{client_id, client_secret} of this person's own Strava app, if they saved one."""
+    with db.cursor() as cur:
+        cur.execute("SELECT app_credentials_enc FROM source_connections WHERE user_id = %s AND source = 'strava'", (user_id,))
+        row = cur.fetchone()
+    if not row or row["app_credentials_enc"] is None:
+        return None
+    try:
+        return json.loads(decrypt_credential(row["app_credentials_enc"]))
+    except Exception:
+        return None
 
 
 def _make_state(user_id: str) -> str:
@@ -73,17 +91,23 @@ def status(user: dict = Depends(require_user)):
         cur.execute(
             """
             SELECT status, error, display_name, last_sync_at, syncing_since, sync_requested_at,
-                   retry_after, items_synced, history_done, credentials_enc IS NOT NULL AS has_credentials
+                   retry_after, items_synced, history_done, credentials_enc IS NOT NULL AS has_tokens,
+                   app_credentials_enc IS NOT NULL AS has_app
             FROM source_connections WHERE user_id = %s AND source = 'strava'
             """,
             (user["id"],),
         )
         row = cur.fetchone()
-    connected = bool(row and row["has_credentials"])
+    connected = bool(row and row["has_tokens"])
+    app = _app_credentials(user["id"]) if row and row["has_app"] else None
     return {
-        "configured": _client() is not None and bool(_public_url()),
+        "configured": bool(_public_url()),                  # the server knows its own address (needed for Strava's redirect)
+        "website": _public_url(),                           # what the person enters into Strava's form
+        "callback_domain": _callback_domain(),
+        "app_saved": app is not None,
+        "client_id": app["client_id"] if app else None,     # the secret never leaves the server
         "connected": connected,
-        "status": row["status"] if connected else "not_connected",
+        "status": (row["status"] if connected else "pending") if row else "not_connected",
         "error": row["error"] if connected else None,
         "athlete": row["display_name"] if connected else None,
         "last_sync_at": _iso(row["last_sync_at"]) if connected else None,
@@ -95,18 +119,53 @@ def status(user: dict = Depends(require_user)):
     }
 
 
+# ─── The person's own Strava app ──────────────────────────────────────────────
+
+class AppBody(BaseModel):
+    client_id: str
+    client_secret: str
+
+
+@router.put("/app")
+def save_app(body: AppBody, user: dict = Depends(require_user)):
+    """Save the Client ID and Client Secret of the person's own Strava app (encrypted).
+    Changing them means signing in to Strava again; what was already imported stays."""
+    client_id, secret = body.client_id.strip(), body.client_secret.strip()
+    if not re.fullmatch(r"\d{3,10}", client_id):
+        raise HTTPException(status_code=400, detail="invalid_client_id")
+    if not re.fullmatch(r"[A-Za-z0-9]{20,64}", secret):
+        raise HTTPException(status_code=400, detail="invalid_client_secret")
+    existing = _app_credentials(user["id"])
+    enc = encrypt_credential(json.dumps({"client_id": client_id, "client_secret": secret}))
+    with db.cursor() as cur:
+        if existing == {"client_id": client_id, "client_secret": secret}:
+            return {"ok": True}                      # nothing changed: keep the connection as it is
+        cur.execute(
+            """
+            INSERT INTO source_connections (user_id, source, status, app_credentials_enc)
+            VALUES (%s, 'strava', 'pending', %s)
+            ON CONFLICT (user_id, source) DO UPDATE SET
+                app_credentials_enc = EXCLUDED.app_credentials_enc,
+                credentials_enc = NULL, status = 'pending', error = NULL,
+                sync_requested_at = NULL, retry_after = NULL
+            """,
+            (user["id"], enc),
+        )
+    return {"ok": True}
+
+
 # ─── Connect ──────────────────────────────────────────────────────────────────
 
 @router.post("/authorize")
 def authorize(user: dict = Depends(require_user)):
-    """The address to send the person to, to let this server read their Strava activities."""
-    client = _client()
-    if not client:
-        raise HTTPException(status_code=400, detail="not_configured")
+    """The address to send the person to, to let their own Strava app read their activities."""
+    app = _app_credentials(user["id"])
+    if not app:
+        raise HTTPException(status_code=400, detail="no_app")
     if not _public_url():
         raise HTTPException(status_code=400, detail="no_public_url")
     query = urlencode({
-        "client_id": client[0],
+        "client_id": app["client_id"],
         "redirect_uri": _redirect_uri(),
         "response_type": "code",
         "approval_prompt": "auto",
@@ -135,6 +194,11 @@ def _page(ok: bool, title_en: str, title_tr: str, body_en: str, body_tr: str, st
     )
 
 
+def _delete_strava_data(cur, user_id: str) -> None:
+    for table in ("tours", "activities", "daily_summary", "sleep", "hrv"):   # tours first: their links cascade
+        cur.execute(f"DELETE FROM {table} WHERE user_id = %s AND source = 'strava'", (user_id,))
+
+
 @router.get("/callback", response_class=HTMLResponse)
 def callback(code: str | None = Query(default=None), state: str | None = Query(default=None),
              error: str | None = Query(default=None), scope: str | None = Query(default=None)):
@@ -144,8 +208,8 @@ def callback(code: str | None = Query(default=None), state: str | None = Query(d
                      "Access was not granted. You can try again from Settings.",
                      "Erişim verilmedi. Ayarlar'dan tekrar deneyebilirsin.", 400)
     user_id = _read_state(state)
-    client = _client()
-    if not user_id or not code or not client:
+    app = _app_credentials(user_id) if user_id else None
+    if not user_id or not code or not app:
         return _page(False, "This link has expired", "Bu bağlantının süresi doldu",
                      "Start again from Settings → Strava.", "Ayarlar → Strava'dan yeniden başla.", 400)
     if "activity:read" not in (scope or "").replace("activity:read_all", "activity:read").split(","):
@@ -154,7 +218,7 @@ def callback(code: str | None = Query(default=None), state: str | None = Query(d
                      "Strava sorduğunda “Aktiviteleriniz hakkındaki verileri görüntüleyin” kutusunu işaretle ve tekrar dene.", 400)
     try:
         r = requests.post(f"{OAUTH_BASE}/token", data={
-            "client_id": client[0], "client_secret": client[1], "code": code, "grant_type": "authorization_code",
+            "client_id": app["client_id"], "client_secret": app["client_secret"], "code": code, "grant_type": "authorization_code",
         }, timeout=HTTP_TIMEOUT)
         r.raise_for_status()
         token = r.json()
@@ -162,29 +226,28 @@ def callback(code: str | None = Query(default=None), state: str | None = Query(d
         athlete = token.get("athlete") or {}
     except Exception:
         return _page(False, "Strava could not be connected", "Strava bağlanamadı",
-                     "Strava did not accept the request. Please try again.",
-                     "Strava isteği kabul etmedi. Lütfen tekrar dene.", 502)
+                     "Strava did not accept the request. Check the Client ID and Client Secret you saved, then try again.",
+                     "Strava isteği kabul etmedi. Kaydettiğin Client ID ve Client Secret'i kontrol edip tekrar dene.", 502)
 
     athlete_id = str(athlete.get("id") or "")
     name = " ".join(x for x in (athlete.get("firstname"), athlete.get("lastname")) if x).strip() or None
     with db.cursor() as cur:
         cur.execute("SELECT external_id FROM source_connections WHERE user_id = %s AND source = 'strava'", (user_id,))
         previous = cur.fetchone()
-        if previous and previous["external_id"] and athlete_id and previous["external_id"] != athlete_id:
+        different = bool(previous and previous["external_id"] and athlete_id and previous["external_id"] != athlete_id)
+        if different:
             _delete_strava_data(cur, user_id)      # a different Strava account: the old activities are not theirs any more
-            previous = None
         cur.execute(
             """
-            INSERT INTO source_connections (user_id, source, status, credentials_enc, external_id, display_name, sync_requested_at)
-            VALUES (%s, 'strava', 'connected', %s, %s, %s, now())
-            ON CONFLICT (user_id, source) DO UPDATE SET
+            UPDATE source_connections SET
                 status = 'connected', error = NULL, retry_after = NULL, sync_requested_at = now(),
-                credentials_enc = EXCLUDED.credentials_enc, external_id = EXCLUDED.external_id,
-                display_name = EXCLUDED.display_name
+                credentials_enc = %s, external_id = %s, display_name = %s
+            WHERE user_id = %s AND source = 'strava'
             """,
-            (user_id, encrypt_credential(json.dumps(creds)), athlete_id or None, name),
+            (encrypt_credential(json.dumps(creds)), athlete_id or None, name, user_id),
         )
-        if previous is None:   # fresh connection (or a different account): start the import from the beginning
+        if previous is None or not previous["external_id"] or different:
+            # first connection (or another account): import the whole history from the beginning
             cur.execute(
                 "UPDATE source_connections SET history_done = FALSE, history_page = 1, history_before = NULL, items_synced = 0, last_sync_at = NULL "
                 "WHERE user_id = %s AND source = 'strava'", (user_id,))
@@ -211,15 +274,10 @@ def sync_now(user: dict = Depends(require_user)):
     return status(user)
 
 
-def _delete_strava_data(cur, user_id: str) -> None:
-    for table in ("tours", "activities", "daily_summary", "sleep", "hrv"):   # tours first: their links cascade
-        cur.execute(f"DELETE FROM {table} WHERE user_id = %s AND source = 'strava'", (user_id,))
-
-
 @router.delete("", status_code=204)
 def disconnect(user: dict = Depends(require_user)):
-    """Disconnect Strava: tell Strava to drop the access, forget the tokens and delete the
-    Strava activities stored here (Strava's API terms ask for that when someone disconnects)."""
+    """Remove Strava completely: tell Strava to drop the access, forget the tokens AND the saved app
+    credentials, and delete the Strava activities stored here (Strava's API terms ask for that)."""
     with db.cursor() as cur:
         cur.execute("SELECT credentials_enc FROM source_connections WHERE user_id = %s AND source = 'strava'", (user["id"],))
         row = cur.fetchone()
